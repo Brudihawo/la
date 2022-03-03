@@ -1,0 +1,5 @@
+*.o
+*.a
+test_solv
+compile_commands.json
+
