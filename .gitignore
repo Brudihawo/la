@@ -1,5 +1,6 @@
 *.o
 *.a
+.cache
 test_solv
 compile_commands.json
 
