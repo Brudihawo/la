@@ -10,6 +10,13 @@ typedef struct {
 } MatF;
 
 typedef struct {
+  float* vals;
+  long* row_pos;
+  long* col_pos;
+  long rows, cols;
+} SMatF; // Sparse Matrix
+
+typedef struct {
   long* order;
   long size;
   long n_swaps;
@@ -67,7 +74,7 @@ MatF MF_with(long rows, long cols, float init_val);
  *
  * @return Nx1 MatF initilised to 0
  */
-#define VEC_EMPTY(size) MF_empty(nx, 1, init_val);
+#define VEC_EMPTY(size) MF_empty(size, 1);
 
 /* @brief Shorthand for initialised vector (Nx1 MatF)
  *
@@ -76,7 +83,7 @@ MatF MF_with(long rows, long cols, float init_val);
  *
  * @return Nx1 MatF initilised to init_val elementwise
  */
-#define VEC_WITH(size, init_val) MF_with(nx, 1, init_val);
+#define VEC_WITH(size, init_val) MF_with(size, 1, init_val);
 
 /* @brief create MatF from float array
  *
@@ -294,3 +301,14 @@ void MF_print(MatF A);
 /* @brief print string representation of shape of A to stdout
  */
 void MF_print_shape(MatF A);
+
+// typedef struct {
+//   float* vals;
+//   long* row_pos;
+//   long* col_pos;
+//   long rows, cols;
+// } SMatF; // Sparse Matrix
+
+SMatF SM_new(long rows, long cols, long n_vals);
+
+void SM_set_vals(SMatF mat, float* vals, long n_vals);
