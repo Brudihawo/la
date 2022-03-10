@@ -10,13 +10,6 @@ typedef struct {
 } MatF;
 
 typedef struct {
-  float* vals;
-  long* row_pos;
-  long* col_pos;
-  long rows, cols;
-} SMatF; // Sparse Matrix
-
-typedef struct {
   long* order;
   long size;
   long n_swaps;
@@ -302,13 +295,61 @@ void MF_print(MatF A);
  */
 void MF_print_shape(MatF A);
 
-// typedef struct {
-//   float* vals;
-//   long* row_pos;
-//   long* col_pos;
-//   long rows, cols;
-// } SMatF; // Sparse Matrix
+// TODO: Update Sparse Matrix structure documentation
+/* Sparse Matrix. All rows are present, but can be empty.
+ *
+ * vals: holds all values in matrix
+ *
+ * row_starts: An array of size nrows and holds indices into vals array indicating
+ *             the first value in a new column.
+ *
+ * row_sizes: An array containing the number of elements in each row
+ *
+ * col_pos: array matching the size of vals, holding column positions of values
+ *
+ * nrows, ncols, nvals: number of rows, cols and values in sparse matrix
+ *
+ */
+typedef struct {
+  long* col_sizes;  //< Number of elements in columns
+  long* col_starts; //< Inidices to starts of cols (in col_idcs array)
+  long* col_idcs;   //< Indices into values array (in column-major order)
+  long* col_pos;    //< Column positions of values in vals array
+  float* vals;      //< Values present in matrix
+  long* row_starts; //< Inidices to starts of rows (in vals/ cols array)
+  long* row_sizes;  //< Number of elements in rows
 
-SMatF SM_new(long rows, long cols, long n_vals);
+  long nrows, ncols, nvals; //< Number of rows, cols and values in matrix
+} SMatF; // Sparse Matrix
+
+#define SM_NOT_PRESENT -1
+
+#define SM_ROW_EMPTY(mat, row) ((mat).row_sizes[row] == 0)
+
+// ASSUMES THAT VALUE EXISTS
+// This is shitty to debug. 
+#define SM_COL(mat, row, col_idx) ((mat).col_pos[(mat).row_starts + (col_idx)])
+long SM_col(SMatF A, long row, long col_idx);
+
+void SM_set(SMatF A, long row, long col, float val);
+
+SMatF SM_empty(long rows, long cols, long n_vals);
 
 void SM_set_vals(SMatF mat, float* vals, long n_vals);
+
+/* @brief indicate whether a SMatF is non-zero at a given position
+ *
+ * @param row
+ * @param col
+ *
+ * @return bool
+ */
+bool SM_has_loc(SMatF A, long row, long col);
+
+float SM_at(SMatF A, long row, long col);
+float *SM_ptr(SMatF A, long row, long col);
+
+void SM_prod(SMatF A, SMatF B, SMatF target);
+SMatF SM_prod_prepare(SMatF A, SMatF B);
+
+void SM_print(SMatF A);
