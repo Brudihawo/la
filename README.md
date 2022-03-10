@@ -2,6 +2,14 @@
 
 Provides Matrix, Vector Multiplication etc. This is a work in progress.
 
+# TODO
+
+- [ ] SMatF Initialisation functions
+- [ ] SMatF Deinitialisation functions
+- [ ] Verify SMatF product correctness with tests (maybe rely on MatF Multiplication)
+- [ ] SMatF Iterative Methods for linear systems of equations
+- [ ] Benchmark SMatF vs MatF product
+
 ## In-File-TODOs:
 
 - [ ] `./la.c:34`: TODO: can i somehow check that rows * cols = sizeof vals?
