@@ -1,6 +1,8 @@
 *.o
 *.a
 .cache
-test_solv
 compile_commands.json
 
+# Ignore tests but not test source code
+test/*
+!test/*.[ch]

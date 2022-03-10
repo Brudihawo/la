@@ -13,7 +13,7 @@ la_lib: la log
 	ar rcs la.a log.o la.o
 
 test_solv: la_lib
-	$(CC) test/test_solv.c la.a -o test_solv $(CFLAGS) $(LIBS) -I..
+	$(CC) test/test_solv.c la.a -o test/test_solv $(CFLAGS) $(LIBS) -I..
 
 clean:
 	rm -vf *.o
