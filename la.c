@@ -532,6 +532,7 @@ SMatF SM_empty_like(SMatF A) {
   return ret;
 }
 
+
 // TODO: check correctness
 bool SM_has_loc(SMatF A, long row, long col) {
   // Check if row is present in matrix

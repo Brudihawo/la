@@ -326,30 +326,19 @@ typedef struct {
 
 #define SM_ROW_EMPTY(mat, row) ((mat).row_sizes[row] == 0)
 
-// ASSUMES THAT VALUE EXISTS
-// This is shitty to debug. 
-#define SM_COL(mat, row, col_idx) ((mat).col_pos[(mat).row_starts + (col_idx)])
-long SM_col(SMatF A, long row, long col_idx);
-
-void SM_set(SMatF A, long row, long col, float val);
-
 SMatF SM_empty(long rows, long cols, long n_vals);
+SMatF SM_empty_like(SMatF A);
 
-void SM_set_vals(SMatF mat, float* vals, long n_vals);
-
-/* @brief indicate whether a SMatF is non-zero at a given position
- *
- * @param row
- * @param col
- *
- * @return bool
- */
 bool SM_has_loc(SMatF A, long row, long col);
+long SM_idx(SMatF A, long row, long col);
 
+void SM_set_or_panic(SMatF A, long row, long col, float val);
 float SM_at(SMatF A, long row, long col);
-float *SM_ptr(SMatF A, long row, long col);
 
-void SM_prod(SMatF A, SMatF B, SMatF target);
+long SM_col(SMatF A, long row, long col_idx);
+long SM_col_or_panic(SMatF A, long row, long col_idx);
+
 SMatF SM_prod_prepare(SMatF A, SMatF B);
+void SM_prod(SMatF A, SMatF B, SMatF target);
 
 void SM_print(SMatF A);
