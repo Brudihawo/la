@@ -1,7 +1,7 @@
 CFLAGS := -Wall -Wextra -pedantic -std=c11 -g
 LIBS := -lm
 
-.DEFAULT_GOAL = test_solv
+.DEFAULT_GOAL = test
 
 log:
 	$(CC) log.c -c $(CFLAGS) $(LIBS)
@@ -16,7 +16,7 @@ test_solv: la_lib
 	$(CC) test/test_solv.c la.a -o test/test_solv $(CFLAGS) $(LIBS) -I..
 
 test_sparse:
-	$(CC) test/test_sparse.c la.a -o test_sparse $(CFLAGS) $(LIBS) -I..
+	$(CC) test/test_sparse.c la.a -o test/test_sparse $(CFLAGS) $(LIBS) -I..
 
 test: test_solv test_sparse
 
