@@ -3,14 +3,15 @@
 #include "string.h"
 
 #define REL_ERROR 0.00001
+#define LA_PRINT_FMT "%5.2f"
 
 typedef struct {
-  float* vals;
+  float *vals;
   long rows, cols;
 } MatF;
 
 typedef struct {
-  long* order;
+  long *order;
   long size;
   long n_swaps;
 } RowPerm;
@@ -45,7 +46,7 @@ MatF MF_empty(long rows, long cols);
 #define MF_EMPTY_LIKE_T(mat) MF_empty((mat).cols, (mat).rows)
 
 /* @brief clone A into new matrix
- * 
+ *
  * @param A: matrix to clone
  *
  * @return Clone of A
@@ -80,11 +81,11 @@ MatF MF_with(long rows, long cols, float init_val);
 
 /* @brief create MatF from float array
  *
- * @param rows number of rows 
+ * @param rows number of rows
  * @param cols number of columns
  * @param vals array of values
  */
-MatF MF_from(long rows, long cols, float* vals);
+MatF MF_from(long rows, long cols, float *vals);
 
 /* @brief Transpose MatF
  *
@@ -162,14 +163,15 @@ bool MF_eq(MatF A, MatF B);
  *
  * @return Subset MatF (copying!)
  */
-MatF MF_subset_copy(MatF A, long start_row, long end_row, long start_col, long end_col);
+MatF MF_subset_copy(MatF A, long start_row, long end_row, long start_col,
+                    long end_col);
 
 // Scalar and Elementwise Operations
 
 /* @brief compute determinant of A
  *
  * @param A matrix to compute determinant for
- * 
+ *
  * @return determinant
  */
 float MF_det(MatF A);
@@ -231,7 +233,8 @@ float VEC_abs(MatF v);
 
 // Solving Equations
 
-/* @brief perform forward substitution for right hand side b (tri_lo * target = b)
+/* @brief perform forward substitution for right hand side b (tri_lo * target =
+ * b)
  *
  * @param tri_lo triangular lower matrix for forward substitution
  * @param b right hand side of equation
@@ -239,7 +242,8 @@ float VEC_abs(MatF v);
  */
 void MF_forw_sub(MatF tri_lo, MatF b, MatF target);
 
-/* @brief perform forward substitution for right hand side b (tri_up * target = b)
+/* @brief perform forward substitution for right hand side b (tri_up * target =
+ * b)
  *
  * @param tri_up triangular upper matrix for backwards substitution
  * @param b right hand side of equation
@@ -252,7 +256,7 @@ void MF_back_sub(const MatF tri_up, MatF b, MatF target);
  * @param A matrix to decompose
  * @return pointer to applied permutations
  */
-RowPerm* MF_lu_decomp(MatF A);
+RowPerm *MF_lu_decomp(MatF A);
 
 /* @brief Calculate solution to LU * target = b
  *
@@ -264,8 +268,8 @@ RowPerm* MF_lu_decomp(MatF A);
 void MF_lu_solv(const MatF LU, MatF b, RowPerm *perms, MatF target);
 
 /* @brief Calculate solution to A target = b using Gauss-Elimination
- *        This converts A to a triangular upper matrix and changes b to match the new
- *        system of equations. Invalidates A and b
+ *        This converts A to a triangular upper matrix and changes b to match
+ * the new system of equations. Invalidates A and b
  *
  * @param A: matrix
  * @param b: right hand side
@@ -282,7 +286,7 @@ void MF_make_tri_up(MatF A);
 /* @brief Check if A is invertible
  *
  * @param A Matrix to check
- * 
+ *
  * @return bool indicating whether a is invertible
  */
 bool MF_invertible(MatF A);
@@ -300,8 +304,8 @@ void MF_print_shape(MatF A);
  *
  * vals: holds all values in matrix
  *
- * row_starts: An array of size nrows and holds indices into vals array indicating
- *             the first value in a new column.
+ * row_starts: An array of size nrows and holds indices into vals array
+ * indicating the first value in a new column.
  *
  * row_sizes: An array containing the number of elements in each row
  *
@@ -311,16 +315,16 @@ void MF_print_shape(MatF A);
  *
  */
 typedef struct {
-  long* col_sizes;  //< Number of elements in columns
-  long* col_starts; //< Inidices to starts of cols (in col_idcs array)
-  long* col_idcs;   //< Indices into values array (in column-major order)
-  long* col_pos;    //< Column positions of values in vals array
-  float* vals;      //< Values present in matrix
-  long* row_starts; //< Inidices to starts of rows (in vals/ cols array)
-  long* row_sizes;  //< Number of elements in rows
+  long *col_sizes;  //< Number of elements in columns
+  long *col_starts; //< Inidices to starts of cols (in col_idcs array)
+  long *col_idcs;   //< Indices into values array (in column-major order)
+  long *col_pos;    //< Column positions of values in vals array
+  float *vals;      //< Values present in matrix
+  long *row_starts; //< Inidices to starts of rows (in vals/ cols array)
+  long *row_sizes;  //< Number of elements in rows
 
   long nrows, ncols, nvals; //< Number of rows, cols and values in matrix
-} SMatF; // Sparse Matrix
+} SMatF;                    // Sparse Matrix
 
 #define SM_NOT_PRESENT -1
 
@@ -328,6 +332,14 @@ typedef struct {
 
 SMatF SM_empty(long rows, long cols, long n_vals);
 SMatF SM_empty_like(SMatF A);
+
+// TODO: Implement SM_empty_from_pos
+SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
+                        long *col_pos);
+
+// TODO: Implement SM_empty_from_pos_vals
+SMatF SM_empty_from_pos_vals(long n_rows, long n_cols, long n_vals,
+                             long *row_pos, long *col_pos, float *vals);
 
 bool SM_has_loc(SMatF A, long row, long col);
 long SM_idx(SMatF A, long row, long col);
@@ -342,3 +354,4 @@ SMatF SM_prod_prepare(SMatF A, SMatF B);
 void SM_prod(SMatF A, SMatF B, SMatF target);
 
 void SM_print(SMatF A);
+void SM_print_shape(SMatF A);

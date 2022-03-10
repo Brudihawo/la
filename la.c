@@ -464,7 +464,7 @@ void MF_print(MatF A) {
     }
     printf(" ");
     for (long col = 0; col < A.cols; col++) {
-      printf("%9.2f", MF_AT(A, row, col));
+      printf(LA_PRINT_FMT, MF_AT(A, row, col));
     }
     if (row != A.rows - 1) {
       printf("\n");
@@ -531,7 +531,6 @@ SMatF SM_empty_like(SMatF A) {
 
   return ret;
 }
-
 
 // TODO: check correctness
 bool SM_has_loc(SMatF A, long row, long col) {
@@ -740,7 +739,7 @@ void SM_print(SMatF A) {
     }
     printf(" ");
     for (long col = 0; col < A.ncols; col++) {
-      printf("%9.2f", SM_at(A, row, col));
+      printf(LA_PRINT_FMT, SM_at(A, row, col));
     }
     if (row != A.nrows - 1) {
       printf("\n");
@@ -748,3 +747,5 @@ void SM_print(SMatF A) {
   }
   printf(" ]\n");
 }
+
+void SM_print_shape(SMatF A) { printf("(%ld x %ld)", A.nrows, A.ncols); }
