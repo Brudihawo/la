@@ -4,18 +4,6 @@
 
 // TODO: Update Sparse Matrix structure documentation
 /* Sparse Matrix. All rows are present, but can be empty.
- *
- * vals: holds all values in matrix
- *
- * row_starts: An array of size nrows and holds indices into vals array
- * indicating the first value in a new column.
- *
- * row_sizes: An array containing the number of elements in each row
- *
- * col_pos: array matching the size of vals, holding column positions of values
- *
- * nrows, ncols, nvals: number of rows, cols and values in sparse matrix
- *
  */
 typedef struct {
   long *col_sizes;  //< Number of elements in columns
@@ -33,7 +21,24 @@ typedef struct {
 
 #define SM_ROW_EMPTY(mat, row) ((mat).row_sizes[row] == 0)
 
+/* @brief Create empty sparse matrix
+ *        Only allocates memory. No information on position of values is present
+ *
+ * @param rows number of rows
+ * @param cols number of columns
+ * @param n_vals number of non-zero values
+ *
+ * @return Matrix with malloced (but uninitialized) memory
+ */
 SMatF SM_empty(long rows, long cols, long n_vals);
+
+/* @brief Create empty sparse matrix by copying size and non-zero structure from other.
+ *        Does not set actual values.
+ *
+ * @param A SMatF to copy structure from
+ *
+ * @return Matrix with malloced (but uninitialized) memory
+ */
 SMatF SM_empty_like(SMatF A);
 
 // TODO: Implement SM_empty_from_pos
@@ -56,7 +61,8 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals,
  */
 SMatF SM_empty_diag(long* diags, long n_diags, long size);
 
-/* @brief Create regular sparse matrix with diagonal non-zero elements.
+/* @brief Create regular sparse matrix with diagonal non-zero elements
+ *        and set each diagonal to a value.
  *
  * @param diags diagonals which can be non-zero.
  *        Main diagonal is denoted by zero.
@@ -68,22 +74,117 @@ SMatF SM_empty_diag(long* diags, long n_diags, long size);
  */
 SMatF SM_diag_regular(long *diags, float* diag_vals, long n_diags, long size);
 
+/* @brief Create an empty SMatF vector
+ *
+ * @param rows rows of vector
+ *
+ * @return SMatF with all positions present in (rows x 1)
+ */
 SMatF SM_vec_empty(long rows);
 
+/* @brief determine whether a position in SMatF can be non-zero
+ *
+ * @param A SMatF to test
+ * @param row row to test
+ * @param col column to test
+ *
+ * @return value can be non-zero
+ */
 bool SM_has_loc(SMatF A, long row, long col);
+
+/* @brief Compute index into value array for position in SMatF
+ *
+ * @param A SMatF to query
+ * @param row row
+ * @param col column
+ *
+ * @return index into value array or SM_NOT_PRESENT if not present.
+ */
 long SM_idx(SMatF A, long row, long col);
 
-void SM_set_or_panic(SMatF A, long row, long col, float val);
-float SM_at(SMatF A, long row, long col);
-
+/* @brief Get column from column index and row
+ *
+ * @param A SMatF to query
+ * @param row row
+ * @param col_idx column index
+ *
+ * @return column index or SM_NOT_PRESENT if not present
+ */
 long SM_col(SMatF A, long row, long col_idx);
+
+/* @brief Get column from column index and row. Crashes if not present
+ *
+ * @param A SMatF to query
+ * @param row row
+ * @param col_idx column index
+ *
+ * @return column
+ */
 long SM_col_or_panic(SMatF A, long row, long col_idx);
 
+/* @brief Set value in SMatF. Crash on trying to set non-zero or out of bounds value
+ *
+ * @param A SMatF to modify
+ * @param row row to set
+ * @param col_idx column to set
+ * @param val value to set
+ */
+void SM_set_or_panic(SMatF A, long row, long col, float val);
+
+/* @brief return value at position in SMatF
+ *
+ * @param A SMatF to query
+ * @param row row
+ * @param col column
+ * 
+ * @return value at position in SMatF
+ */
+float SM_at(SMatF A, long row, long col);
+
+SMatF SM_addsub_prepare(SMatF A, SMatF B);
+void SM_add(SMatF A, SMatF B, SMatF target);
+void SM_sub(SMatF A, SMatF B, SMatF target);
+
+/* @brief prepare target for matrix product of A and B
+ *
+ * @param A left factor of matrix product
+ * @param B right factor of matrix product
+ *
+ * @return SMatF with expected structure to hold A*B
+ */
 SMatF SM_prod_prepare(SMatF A, SMatF B);
+
+/* @brief SMatF matrix multiplication
+ *
+ * @param A left factor of matrix product
+ * @param B right factor of matrix product
+ * @param target SMatF to write results into (create by SM_prod_prepare)
+ *
+ * @return SMatF with expected structure to hold A*B
+ */
 void SM_prod(SMatF A, SMatF B, SMatF target);
 
+/* @brief Print contents of A
+ *
+ * @param A SMatF to print
+ */
 void SM_print(SMatF A);
+
+/* @brief Print non-zero structure of A
+ *
+ * @param A SMatF to print
+ */
 void SM_print_nonzero(SMatF A);
+
+/* @brief Print meta information of A (for debug purposes)
+ *
+ * @param A SMatF to print
+ */
 void SM_print_meta(SMatF A);
+
+/* @brief Print shape of A
+ *
+ * @param A SMatF to print
+ */
 void SM_print_shape(SMatF A);
 #endif // SPARSE_H

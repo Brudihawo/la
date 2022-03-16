@@ -8,21 +8,6 @@
 
 #include "la.h"
 
-// typedef struct {
-//   long* col_sizes;  //< Number of elements in columns
-//   long* col_starts; //< Inidices to starts of cols (in col_idcs array)
-//   long* col_idcs;   //< Indices into values array (in column-major order)
-//   long* col_pos;    //< Column positions of values in vals array
-//   float* vals;      //< Values present in matrix
-//   long* row_starts; //< Inidices to starts of rows (in vals/ cols array)
-//   long* row_sizes;  //< Number of elements in rows
-//
-//   long nrows, ncols, nvals; //< Number of rows, cols and values in matrix
-// } SMatF; // Sparse Matrix
-
-// #define SM_col_iter(mat, col_idx_var_name, col_var_name)
-// #define SM_row_iter(mat, row_idx_var_name, row_var_name)
-
 SMatF SM_empty(long rows, long cols, long n_vals) {
   return (SMatF){
       .nrows = rows,
@@ -248,12 +233,6 @@ float *SM_ptr_or_panic(SMatF A, long row, long col) {
   return &A.vals[idx];
 }
 
-/* @brief perform matrix multiplication with two sparse matrices
- *        assumes target matches required size and positions
- *        (created with SM_prod_prepare ...)
- *
- * saves output into target
- */
 void SM_prod(SMatF A, SMatF B, SMatF target) {
   // size assertions
   assert(A.ncols == B.nrows && "Size mismatch between A and B");
@@ -278,9 +257,6 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   }
 }
 
-/* @brief prepare target for matrix multiplication
- *        allocates memory in target to accomodate neccesary values
- */
 SMatF SM_prod_prepare(SMatF A, SMatF B) {
   assert((A.ncols == B.nrows) && "Size mismatch, needs a.cols == b.rows.");
 
