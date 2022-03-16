@@ -1,26 +1,36 @@
 CFLAGS := -Wall -Wextra -pedantic -std=c11 -g
 LIBS := -lm
 
+SRCDIR := ./src
+TESTDIR := ./test
+
 .DEFAULT_GOAL = test
 
 log:
-	$(CC) log.c -c $(CFLAGS) $(LIBS)
+	$(CC) $(SRCDIR)/log.c -c -o $(SRCDIR)/log.o $(CFLAGS) $(LIBS)
 
 la:
-	$(CC) la.c -c $(CFLAGS) $(LIBS)
+	$(CC) $(SRCDIR)/la.c -c -o $(SRCDIR)/la.o $(CFLAGS) $(LIBS)
 
 la_lib: la log
-	ar rcs la.a log.o la.o
+	ar rcs $(SRCDIR)/la.a $(SRCDIR)/log.o $(SRCDIR)/la.o
 
 test_solv: la_lib
-	$(CC) test/test_solv.c la.a -o test/test_solv $(CFLAGS) $(LIBS) -I..
+	$(CC) $(TESTDIR)/test_solv.c $(SRCDIR)/la.a -o $(TESTDIR)/test_solv \
+		$(CFLAGS) $(LIBS) -I./src
 
 test_sparse:
-	$(CC) test/test_sparse.c la.a -o test/test_sparse $(CFLAGS) $(LIBS) -I..
+	$(CC) $(TESTDIR)/test_sparse.c $(SRCDIR)/la.a -o $(TESTDIR)/test_sparse \
+		$(CFLAGS) $(LIBS) -I./src
 
 test: test_solv test_sparse
 
+coverage: clean test
+	./coverage.sh
+
 clean:
-	rm -vf *.o
-	rm -vf *.a
-	rm -vf test_solv
+	rm -vf $(SRCDIR)*.o
+	rm -vf $(SRCDIR)*.a
+	rm -vf $(TESTDIR)/test_solv
+	rm -vf $(TESTDIR)/test_sparse
+	rm -vfr coverage

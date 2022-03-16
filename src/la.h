@@ -3,7 +3,7 @@
 #include "string.h"
 
 #define REL_ERROR 0.00001
-#define LA_PRINT_FMT "%5.2f"
+#define LA_PRINT_FMT "%6.2f"
 
 typedef struct {
   float *vals;
@@ -338,8 +338,34 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos);
 
 // TODO: Implement SM_empty_from_pos_vals
-SMatF SM_empty_from_pos_vals(long n_rows, long n_cols, long n_vals,
-                             long *row_pos, long *col_pos, float *vals);
+SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals,
+                       long *row_pos, long *col_pos, float *vals);
+
+/* @brief create empty sparse matrix with diagonal non-zero elements.
+ *
+ * @param diags diagonals which can be non-zero.
+ *        Main diagonal is denoted by zero.
+ *        Diagonals below are denoted by negative sign, ones above by positive sign.
+ * @param n_diags number of diagonals to populate
+ * @param size size of matrix (square)
+ *
+ * @return Diagonal Matrix with no values set (uninitialized memory)
+ */
+SMatF SM_empty_diag(long* diags, long n_diags, long size);
+
+/* @brief Create regular sparse matrix with diagonal non-zero elements.
+ *
+ * @param diags diagonals which can be non-zero.
+ *        Main diagonal is denoted by zero.
+ *        Diagonals below are denoted by negative sign, ones above by positive sign.
+ * @param n_diags number of diagonals to populate
+ * @param size size of matrix (square)
+ *
+ * @return Diagonal Matrix with values set to values specified in diag_vals
+ */
+SMatF SM_diag_regular(long *diags, float* diag_vals, long n_diags, long size);
+
+SMatF SM_vec_empty(long rows);
 
 bool SM_has_loc(SMatF A, long row, long col);
 long SM_idx(SMatF A, long row, long col);
@@ -354,4 +380,6 @@ SMatF SM_prod_prepare(SMatF A, SMatF B);
 void SM_prod(SMatF A, SMatF B, SMatF target);
 
 void SM_print(SMatF A);
+void SM_print_nonzero(SMatF A);
+void SM_print_meta(SMatF A);
 void SM_print_shape(SMatF A);

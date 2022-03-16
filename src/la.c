@@ -379,7 +379,6 @@ void MF_gauss_elim(MatF A, MatF b, MatF target) {
   RowPerm perms = RP_new(A.rows);
 
   // TODO: implement pivoting and stability measures in gauss eliminiation
-  // TODO: do i want to zero the right lower half of A?
   // Transform to triangular upper matrix
   float *cpybuf = malloc(A.cols * sizeof(float)); // copy buffer
   for (long i = 0; i < A.cols - 1; i++) {         // zeroing of i-th column
@@ -420,6 +419,8 @@ void MF_gauss_elim(MatF A, MatF b, MatF target) {
 
   MF_back_sub(A, b, target);
 
+  // i need to do something with the permutations here
+  // else wrong result
   RP_FREE(perms);
 }
 
@@ -506,6 +507,21 @@ SMatF SM_empty(long rows, long cols, long n_vals) {
   };
 }
 
+SMatF SM_vec_empty(long rows) {
+  SMatF ret = SM_empty(rows, 1, rows);
+
+  ret.col_sizes[0] = rows;
+  ret.col_starts[0] = 0;
+  for (long i = 0; i < rows; ++i) {
+    ret.col_idcs[i] = i;
+    ret.col_pos[i] = 0;
+
+    ret.row_sizes[i] = 1;
+    ret.row_starts[i] = i;
+  }
+  return ret;
+}
+
 SMatF SM_empty_like(SMatF A) {
   SMatF ret = {
       .nrows = A.nrows,
@@ -532,6 +548,96 @@ SMatF SM_empty_like(SMatF A) {
   return ret;
 }
 
+SMatF SM_empty_diag(long *diags, long n_diags, long size) {
+  long n_vals = 0;
+  for (long d = 0; d < n_diags; ++d) {
+    const long cur_diag = diags[d];
+    if (labs(cur_diag) >= size) {
+      log_err("Failed trying to set diagonal %ld in matrix of size %ld. "
+              "Cannot set values outside of matrix.",
+              cur_diag, size);
+      exit(EXIT_FAILURE);
+    }
+
+    n_vals += (size - labs(cur_diag));
+  }
+
+  SMatF ret = SM_empty(size, size, n_vals);
+
+  // compute row / col sizes
+  long count_row = 0;
+  for (long rc_idx = 0; rc_idx < size; ++rc_idx) {
+    for (long d = 0; d < n_diags; ++d) {
+      const long cur_diag = diags[d];
+      // check value present in row and diagonal
+      // rc_idx represents a row here
+      if (((cur_diag < 0) && (rc_idx >= -cur_diag)) || // diagonal below main
+          ((cur_diag >= 0) && (rc_idx < size - cur_diag))) { // diagonal above
+        // row sizes
+        ++ret.row_sizes[rc_idx];
+
+        // set column of current value position
+        ret.col_pos[count_row] = rc_idx + cur_diag;
+        ++count_row;
+      }
+
+      // check value present in column and diagonal
+      // rc_idx represents a column here
+      if (((cur_diag >= 0) && (rc_idx >= cur_diag)) || // diagonal above main
+          ((cur_diag < 0) && (rc_idx < size + cur_diag))) { // diagonal below
+        // column sizes
+        ++ret.col_sizes[rc_idx];
+      }
+    }
+  }
+
+  // row / column starts
+  ret.row_starts[0] = 0;
+  ret.col_starts[0] = 0;
+  for (long row_col = 1; row_col < size; ++row_col) {
+    ret.row_starts[row_col] =
+        ret.row_starts[row_col - 1] + ret.row_sizes[row_col - 1];
+    ret.col_starts[row_col] =
+        ret.col_starts[row_col - 1] + ret.col_sizes[row_col - 1];
+  }
+
+  long count_col = 0;
+  for (long col = 0; col < size; ++col) {
+    for (long d = 0; d < n_diags; ++d) {
+      const long cur_diag = diags[d];
+      // check value present in column and diagonal
+      // rc_idx represents a column here
+      if (((cur_diag >= 0) && (col >= -cur_diag)) ||     // diagonal above main
+          ((cur_diag < 0) && (col < size - cur_diag))) { // diagonal below
+        // set row-major index in column-major index array
+        // ret.col_idcs[row_col]
+        long cur_row = col - cur_diag;
+        ret.col_idcs[count_col] = SM_idx(ret, cur_row, col);
+        ++count_col;
+      }
+    }
+  }
+
+  return ret;
+}
+
+SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size) {
+  SMatF ret = SM_empty_diag(diags, n_diags, size);
+
+  for (long d = 0; d < n_diags; ++d) {
+    const long cur_diag = diags[d];
+    long row = cur_diag > 0 ? 0 : -cur_diag;
+    long col = cur_diag > 0 ? cur_diag : 0;
+    for (long idx = 0; idx < size - labs(cur_diag); ++idx) {
+      SM_set_or_panic(ret, row, col, diag_vals[d]);
+
+      ++row;
+      ++col;
+    }
+  }
+  return ret;
+}
+
 // TODO: check correctness
 bool SM_has_loc(SMatF A, long row, long col) {
   // Check if row is present in matrix
@@ -539,7 +645,7 @@ bool SM_has_loc(SMatF A, long row, long col) {
     return false;
 
   const long row_start = A.row_starts[row];
-  for (long i = 0; i < A.row_sizes[row] && i < A.col_pos[row_start + i]; i++) {
+  for (long i = 0; i < A.row_sizes[row]; i++) {
     if (A.col_pos[row_start + i] == col)
       return true;
   }
@@ -547,13 +653,17 @@ bool SM_has_loc(SMatF A, long row, long col) {
 }
 
 long SM_idx(SMatF A, long row, long col) {
-  assert(row < A.nrows && col < A.ncols && "Position out of bounds");
+  if (row > A.nrows || col > A.ncols) {
+    log_err("Position (%ld, %ld) out of bounds in Matrix of size (%ld, %ld).",
+            row, col, A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
 
   if (SM_ROW_EMPTY(A, row))
     return SM_NOT_PRESENT;
 
   const long row_start = A.row_starts[row];
-  for (long i = 0; i < A.row_sizes[row] && i < A.col_pos[row_start + i]; i++) {
+  for (long i = 0; i < A.row_sizes[row]; i++) {
     if (A.col_pos[row_start + i] == col)
       return row_start + i;
   }
@@ -579,7 +689,7 @@ float SM_at(SMatF A, long row, long col) {
 long SM_col(SMatF A, long row, long col_idx) {
   assert(row < A.nrows && col_idx < A.ncols && "Position out of bounds");
 
-  if (SM_ROW_EMPTY(A, row) || col_idx < A.row_sizes[row])
+  if (SM_ROW_EMPTY(A, row) || col_idx >= A.row_sizes[row])
     return SM_NOT_PRESENT;
 
   return A.col_pos[A.row_starts[row] + col_idx];
@@ -662,7 +772,11 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
          t_col++) { // iterate on row, column in target
       for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
         // Test idx in A and B for column / row respectively
-        if (SM_has_loc(A, t_row, test_idx) && SM_has_loc(B, test_idx, t_col)) {
+        long idx = SM_col(A, t_row, test_idx);
+        if (idx == SM_NOT_PRESENT) continue;
+
+        if (SM_has_loc(A, t_row, SM_col_or_panic(A, t_row, test_idx))
+            && SM_has_loc(B, SM_col_or_panic(A, t_row, test_idx), t_col)) {
           ret.nvals++;
           ret.col_sizes[t_col]++;
           ret.row_sizes[t_row]++;
@@ -748,4 +862,18 @@ void SM_print(SMatF A) {
   printf(" ]\n");
 }
 
+void SM_print_nonzero(SMatF A) {
+  for (long row = 0; row < A.nrows; row++) {
+    printf("| ");
+    for (long col = 0; col < A.ncols; col++) {
+      printf(SM_has_loc(A, row, col) ? "* " : "  ");
+    }
+    printf("|\n");
+  }
+}
+
 void SM_print_shape(SMatF A) { printf("(%ld x %ld)", A.nrows, A.ncols); }
+
+void SM_print_meta(SMatF A) {
+  printf("SMatF (%ld x %ld), %ld values set.\n", A.nrows, A.ncols, A.nvals);
+}
