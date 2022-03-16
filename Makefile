@@ -12,8 +12,14 @@ log:
 la:
 	$(CC) $(SRCDIR)/la.c -c -o $(SRCDIR)/la.o $(CFLAGS) $(LIBS)
 
-la_lib: la log
-	ar rcs $(SRCDIR)/la.a $(SRCDIR)/log.o $(SRCDIR)/la.o
+matf:
+	$(CC) $(SRCDIR)/matf.c -c -o $(SRCDIR)/matf.o $(CFLAGS) $(LIBS)
+
+sparse:
+	$(CC) $(SRCDIR)/sparse.c -c -o $(SRCDIR)/sparse.o $(CFLAGS) $(LIBS)
+
+la_lib: la matf sparse log
+	ar rcs $(SRCDIR)/la.a $(SRCDIR)/*.o
 
 test_solv: la_lib
 	$(CC) $(TESTDIR)/test_solv.c $(SRCDIR)/la.a -o $(TESTDIR)/test_solv \

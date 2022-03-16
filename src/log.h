@@ -1,5 +1,5 @@
-#ifndef LOGGING_H
-#define LOGGING_H
+#ifndef LOG_H
+#define LOG_H
 
 typedef enum {
   VERB_ERR = 0,

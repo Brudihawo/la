@@ -1,8 +1,9 @@
-#include "../la.h"
+#include "la.h"
 
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "matf.h"
 
 // float between 0 and 1
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
