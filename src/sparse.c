@@ -1,10 +1,10 @@
 #include "sparse.h"
 
-#include "stdlib.h"
-#include "log.h"
 #include "assert.h"
-#include "stdio.h"
+#include "log.h"
 #include "memory.h"
+#include "stdio.h"
+#include "stdlib.h"
 
 #include "la.h"
 
@@ -61,6 +61,116 @@ SMatF SM_empty_like(SMatF A) {
   memcpy(ret.col_pos, A.col_pos, A.nvals * sizeof(long));
   memcpy(ret.row_starts, A.row_starts, A.nrows * sizeof(long));
   memcpy(ret.row_sizes, A.row_sizes, A.nrows * sizeof(long));
+
+  return ret;
+}
+
+/* @brief initialize row / column start arrays after row / column sizes have
+ *        been initialized.
+ */
+void SM_init_start_arrs(SMatF A) {
+  A.row_starts[0] = 0;
+  for (long row = 0; row < A.nrows; ++row) {
+    A.row_starts[row] = A.row_starts[row - 1] + A.row_sizes[row - 1];
+  }
+
+  A.col_starts[0] = 0;
+  for (long col = 0; col < A.ncols; ++col) {
+    A.col_starts[col] = A.col_starts[col - 1] + A.col_sizes[col - 1];
+  }
+}
+
+SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
+                        long *col_pos) {
+  SMatF ret = {
+      .nrows = n_rows,
+      .ncols = n_cols,
+      .nvals = n_vals,
+
+      .col_sizes = calloc(n_cols, sizeof(long)),
+      .col_starts = malloc(n_cols * sizeof(long)),
+      .col_idcs = malloc(n_vals * sizeof(long)),
+      .col_pos = malloc(n_vals * sizeof(long)),
+      .vals = malloc(n_vals * sizeof(float)),
+      .row_starts = malloc(n_rows * sizeof(long)),
+      .row_sizes = calloc(n_rows, sizeof(long)),
+  };
+
+  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
+
+  for (long i = 0; i < n_vals; ++i) {
+    assert((row_pos[i] > 0 && row_pos[i] < n_rows) &&
+           "Row Position out of bounds");
+    assert((col_pos[i] > 0 && col_pos[i] < n_cols) &&
+           "Column Position out of bounds");
+    // increment corresponding row and column sizes
+    ++ret.col_sizes[col_pos[i]];
+    ++ret.row_sizes[row_pos[i]];
+  }
+
+	SM_init_start_arrs(ret);
+
+  // validate nonzero position order
+  long last_idx = -1;
+  for (long i = 0; i < n_vals; ++i) {
+    long cur_idx = SM_idx(ret, row_pos[i], col_pos[i]);
+    assert(last_idx < cur_idx &&
+           "Positions need to be passed in row-major order");
+    last_idx = cur_idx;
+  }
+
+  ret.col_pos = col_pos;
+  for (long i = 0; i < n_vals; ++i) {
+    ret.col_idcs[i] = SM_idx(ret, row_pos[i], col_pos[i]);
+  }
+
+  return ret;
+}
+
+SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
+                       long *col_pos, float *vals) {
+  SMatF ret = {
+      .nrows = n_rows,
+      .ncols = n_cols,
+      .nvals = n_vals,
+
+      .col_sizes = calloc(n_cols, sizeof(long)),
+      .col_starts = malloc(n_cols * sizeof(long)),
+      .col_idcs = malloc(n_vals * sizeof(long)),
+      .col_pos = malloc(n_vals * sizeof(long)),
+      .vals = malloc(n_vals * sizeof(float)),
+      .row_starts = malloc(n_rows * sizeof(long)),
+      .row_sizes = calloc(n_rows, sizeof(long)),
+  };
+
+  memcpy(ret.vals, vals, n_vals * sizeof(float));
+  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
+
+  for (long i = 0; i < n_vals; ++i) {
+    assert((row_pos[i] > 0 && row_pos[i] < n_rows) &&
+           "Row Position out of bounds");
+    assert((col_pos[i] > 0 && col_pos[i] < n_cols) &&
+           "Column Position out of bounds");
+    // increment corresponding row and column sizes
+    ++ret.col_sizes[col_pos[i]];
+    ++ret.row_sizes[row_pos[i]];
+  }
+
+	SM_init_start_arrs(ret);
+
+  // validate nonzero position order
+  long last_idx = -1;
+  for (long i = 0; i < n_vals; ++i) {
+    long cur_idx = SM_idx(ret, row_pos[i], col_pos[i]);
+    assert(last_idx < cur_idx &&
+           "Positions need to be passed in row-major order");
+    last_idx = cur_idx;
+  }
+
+  ret.col_pos = col_pos;
+  for (long i = 0; i < n_vals; ++i) {
+    ret.col_idcs[i] = SM_idx(ret, row_pos[i], col_pos[i]);
+  }
 
   return ret;
 }
@@ -188,25 +298,29 @@ long SM_idx(SMatF A, long row, long col) {
 }
 
 bool SM_structure_eq(SMatF A, SMatF B) {
-  // TODO: I think this can be optimized. I dont think we have to do all these checks.
-  if (A.ncols != B.ncols || A.nrows != B.nrows || A.nvals != B.nvals) return false;
+  // TODO: I think this can be optimized. I dont think we have to do all these
+  // checks.
+  if (A.ncols != B.ncols || A.nrows != B.nrows || A.nvals != B.nvals)
+    return false;
 
   for (long row = 0; row < A.nrows; ++row) {
-    if ((A.row_sizes[row] != B.row_sizes[row])
-        || (A.row_starts[row] != B.row_starts[row])) return false;
+    if ((A.row_sizes[row] != B.row_sizes[row]) ||
+        (A.row_starts[row] != B.row_starts[row]))
+      return false;
   }
 
   for (long col = 0; col < A.ncols; ++col) {
-    if ((A.col_sizes[col] != B.col_sizes[col])
-        || (A.col_starts[col] != B.col_starts[col])) return false;
+    if ((A.col_sizes[col] != B.col_sizes[col]) ||
+        (A.col_starts[col] != B.col_starts[col]))
+      return false;
   }
 
   for (long i = 0; i < A.nvals; ++i) {
-    if (A.col_pos[i] != B.col_pos[i]
-        || A.col_idcs[i] != B.col_idcs[i]) return false;
-	}
+    if (A.col_pos[i] != B.col_pos[i] || A.col_idcs[i] != B.col_idcs[i])
+      return false;
+  }
 
-	return true;
+  return true;
 }
 
 // TODO: do i want a non-panicking setter?
@@ -256,14 +370,15 @@ float *SM_ptr_or_panic(SMatF A, long row, long col) {
 }
 
 SMatF SM_addsub_prepare(SMatF A, SMatF B) {
-  assert((A.nrows == B.nrows && A.ncols == B.ncols)
-         && "Size mismatch. A and B need to have the same size!");
+  assert((A.nrows == B.nrows && A.ncols == B.ncols) &&
+         "Size mismatch. A and B need to have the same size!");
 
-	// short circuit if a and b have the same structure
-	if (SM_structure_eq(A, B)) return SM_empty_like(A);
+  // short circuit if a and b have the same structure
+  if (SM_structure_eq(A, B))
+    return SM_empty_like(A);
   // compute number of values in target
   long nvals = 0;
-  for (long col = 0; col < B.ncols; ++col) { // columns in target
+  for (long col = 0; col < B.ncols; ++col) {   // columns in target
     for (long row = 0; row < A.nrows; ++row) { // rows in target
       if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
         ++nvals;
@@ -273,7 +388,7 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
 
   SMatF ret = SM_empty(A.nrows, A.ncols, nvals);
   long cur_val_idx = 0;
-  for (long row = 0; row < A.nrows; ++row) { // rows in target
+  for (long row = 0; row < A.nrows; ++row) {   // rows in target
     for (long col = 0; col < B.ncols; ++col) { // columns in target
       if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
         ++ret.row_sizes[row];
@@ -284,60 +399,57 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
     }
   }
 
+	SM_init_start_arrs(ret);
+
   cur_val_idx = 0;
-  for (long row = 0; row < A.nrows; ++row) { // rows in target
+  for (long row = 0; row < A.nrows; ++row) {   // rows in target
     for (long col = 0; col < B.ncols; ++col) { // columns in target
       ret.col_idcs[cur_val_idx] = SM_idx(ret, row, col);
       ++cur_val_idx;
     }
   }
 
-  // row and column starts
-  ret.row_starts[0] = 0;
-  for (long row = 1; row < ret.nrows; ++row) {
-    ret.row_starts[row] = ret.row_starts[row - 1] + ret.row_sizes[row - 1];
-  }
-
-  ret.col_starts[0] = 0;
-  for (long col = 1; col < ret.ncols; ++col) {
-    ret.col_starts[col] = ret.col_starts[col - 1] + ret.col_sizes[col - 1];
-  }
 
   return ret;
 }
 
 void SM_add(SMatF A, SMatF B, SMatF target) {
-  assert((A.nrows == B.nrows && A.ncols == B.ncols)
-         && (target.ncols == A.ncols && target.nrows == A.nrows)
-         && "Size mismatch. A, B, and target need to have the same size!");
+  assert((A.nrows == B.nrows && A.ncols == B.ncols) &&
+         (target.ncols == A.ncols && target.nrows == A.nrows) &&
+         "Size mismatch. A, B, and target need to have the same size!");
 
   for (long row = 0; row < target.nrows; ++row) {
     for (long col = 0; col < target.nrows; ++col) {
       if (SM_has_loc(target, row, col)) {
-        // TODO: think about checking querying nonzero in A or B first, but i think this is more efficient right now.
-        SM_set_or_panic(target, row, col, SM_at(A, row, col) + SM_at(B, row, col));
+        // TODO: think about checking querying nonzero in A or B first, but i
+        // think this is more efficient right now.
+        SM_set_or_panic(target, row, col,
+                        SM_at(A, row, col) + SM_at(B, row, col));
       }
     }
   }
 }
 
 void SM_sub(SMatF A, SMatF B, SMatF target) {
-  assert((A.nrows == B.nrows && A.ncols == B.ncols)
-         && (target.ncols == A.ncols && target.nrows == A.nrows)
-         && "Size mismatch. A, B, and target need to have the same size!");
+  assert((A.nrows == B.nrows && A.ncols == B.ncols) &&
+         (target.ncols == A.ncols && target.nrows == A.nrows) &&
+         "Size mismatch. A, B, and target need to have the same size!");
 
   for (long row = 0; row < target.nrows; ++row) {
     for (long col = 0; col < target.nrows; ++col) {
       if (SM_has_loc(target, row, col)) {
-        // TODO: think about checking querying nonzero in A or B first, but i think this is more efficient right now.
-        SM_set_or_panic(target, row, col, SM_at(A, row, col) - SM_at(B, row, col));
+        // TODO: think about checking querying nonzero in A or B first, but i
+        // think this is more efficient right now.
+        SM_set_or_panic(target, row, col,
+                        SM_at(A, row, col) - SM_at(B, row, col));
       }
     }
   }
 }
 
 void SM_scl(SMatF A, float s, SMatF target) {
-	assert(SM_structure_eq(A, target) && "A and target must have the same shape!");
+  assert(SM_structure_eq(A, target) &&
+         "A and target must have the same shape!");
 
   for (long i = 0; i < A.nvals; ++i) {
     target.vals[i] = A.vals[i] * s;
@@ -392,10 +504,11 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
       for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
         // Test idx in A and B for column / row respectively
         long idx = SM_col(A, t_row, test_idx);
-        if (idx == SM_NOT_PRESENT) continue;
+        if (idx == SM_NOT_PRESENT)
+          continue;
 
-        if (SM_has_loc(A, t_row, SM_col_or_panic(A, t_row, test_idx))
-            && SM_has_loc(B, SM_col_or_panic(A, t_row, test_idx), t_col)) {
+        if (SM_has_loc(A, t_row, SM_col_or_panic(A, t_row, test_idx)) &&
+            SM_has_loc(B, SM_col_or_panic(A, t_row, test_idx), t_col)) {
           ret.nvals++;
           ret.col_sizes[t_col]++;
           ret.row_sizes[t_row]++;
@@ -406,12 +519,8 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
     }
   }
 
-  // Set row starts
-  ret.row_starts[0] = 0;
-  for (long t_row = 1; t_row < ret.nrows; t_row++) {
-    ret.row_starts[t_row] =
-        ret.row_starts[t_row - 1] + ret.row_sizes[t_row - 1];
-  }
+  // Set row / column starts
+	SM_init_start_arrs(ret);
 
   // allocate memory
   ret.vals = malloc(ret.nvals * sizeof(float));
@@ -437,13 +546,6 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
   // TODO: Do i need column-wise iteration in SMatF?
   // Assignments for column-wise iteration
-
-  // set column starts
-  ret.col_starts[0] = 0;
-  for (long t_col = 1; t_col < ret.ncols; t_col++) {
-    ret.col_starts[t_col] =
-        ret.col_starts[t_col - 1] + ret.col_sizes[t_col - 1];
-  }
 
   // set col_idcs
   cur_idx = 0;
@@ -495,4 +597,14 @@ void SM_print_shape(SMatF A) { printf("(%ld x %ld)", A.nrows, A.ncols); }
 
 void SM_print_meta(SMatF A) {
   printf("SMatF (%ld x %ld), %ld values set.\n", A.nrows, A.ncols, A.nvals);
+}
+
+void SM_free(SMatF A) {
+  free(A.vals);
+  free(A.col_pos);
+  free(A.col_idcs);
+  free(A.row_sizes);
+  free(A.col_sizes);
+  free(A.row_starts);
+  free(A.col_starts);
 }

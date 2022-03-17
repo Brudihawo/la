@@ -41,12 +41,30 @@ SMatF SM_empty(long rows, long cols, long n_vals);
  */
 SMatF SM_empty_like(SMatF A);
 
-// TODO: Implement SM_empty_from_pos
+/* @brief Create empty SMatF from ordered list of non-zero positions
+ *
+ * @param n_rows number of rows
+ * @param n_cols number of columns
+ * @param n_vals number of values
+ * @param row_pos row positions that can be non-zero (in row-major order)
+ * @param col_pos column positions that can be non-zero (in row-major order)
+ *
+ * @return SMatF with corresponding non-zero structure but empty values
+ */
 SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos);
 
-// TODO: Implement SM_empty_from_pos_vals
-SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals,
+/* @brief Create SMatF from ordered list of non-zero positions
+ *
+ * @param n_rows number of rows
+ * @param n_cols number of columns
+ * @param n_vals number of values
+ * @param row_pos row positions that can be non-zero (in row-major order)
+ * @param col_pos column positions that can be non-zero (in row-major order)
+ * @param vals values of positions (value array is set to this at the moment)
+ *
+ * @return SMatF with corresponding non-zero structure and set values
+ */SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals,
                        long *row_pos, long *col_pos, float *vals);
 
 /* @brief create empty sparse matrix with diagonal non-zero elements.
@@ -227,4 +245,10 @@ void SM_print_meta(SMatF A);
  * @param A SMatF to print
  */
 void SM_print_shape(SMatF A);
+
+/* @brief Free SMatF memory
+ *
+ * @param A SMatF to free
+ */
+void SM_free(SMatF A);
 #endif // SPARSE_H
