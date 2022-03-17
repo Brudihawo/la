@@ -102,6 +102,15 @@ bool SM_has_loc(SMatF A, long row, long col);
  */
 long SM_idx(SMatF A, long row, long col);
 
+/* @brief Check for equal non-zero structure of A and B
+ *
+ * @param A
+ * @param B
+ *
+ * @return whether A and B have the same non-zero structure.
+ */
+bool SM_structure_eq(SMatF A, SMatF B);
+
 /* @brief Get column from column index and row
  *
  * @param A SMatF to query
@@ -141,9 +150,40 @@ void SM_set_or_panic(SMatF A, long row, long col, float val);
  */
 float SM_at(SMatF A, long row, long col);
 
+/* @brief prepare target for element wise sum of A and B
+ *
+ * @param A summand A
+ * @param B summand B
+ *
+ * @return SMatF with expected structure to hold A+B
+ */
 SMatF SM_addsub_prepare(SMatF A, SMatF B);
+
+/* @brief Elementwise Addition of A and B
+ *
+ * @param A summand A
+ * @param B summand B
+ * @param target location to save to (can only be A or B if A and B have the same
+ *        non-zero structure.)
+ */
 void SM_add(SMatF A, SMatF B, SMatF target);
+
+/* @brief Elementwise subtraction of B from A
+ *
+ * @param A SMatF to subtract from
+ * @param B SMatF to subtract
+ * @param target location to save to (can only be A or B if A and B have the same
+ *        non-zero structure.)
+ */
 void SM_sub(SMatF A, SMatF B, SMatF target);
+
+/* @brief Elementwise scalar multiplication of A by s
+ *
+ * @param A SMatF to Scale
+ * @param s Scaling factor
+ * @param target where to save results. Can be A
+ */
+void SM_scl(SMatF A, float s, SMatF target);
 
 /* @brief prepare target for matrix product of A and B
  *

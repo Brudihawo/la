@@ -187,6 +187,28 @@ long SM_idx(SMatF A, long row, long col) {
   return SM_NOT_PRESENT;
 }
 
+bool SM_structure_eq(SMatF A, SMatF B) {
+  // TODO: I think this can be optimized. I dont think we have to do all these checks.
+  if (A.ncols != B.ncols || A.nrows != B.nrows || A.nvals != B.nvals) return false;
+
+  for (long row = 0; row < A.nrows; ++row) {
+    if ((A.row_sizes[row] != B.row_sizes[row])
+        || (A.row_starts[row] != B.row_starts[row])) return false;
+  }
+
+  for (long col = 0; col < A.ncols; ++col) {
+    if ((A.col_sizes[col] != B.col_sizes[col])
+        || (A.col_starts[col] != B.col_starts[col])) return false;
+  }
+
+  for (long i = 0; i < A.nvals; ++i) {
+    if (A.col_pos[i] != B.col_pos[i]
+        || A.col_idcs[i] != B.col_idcs[i]) return false;
+	}
+
+	return true;
+}
+
 // TODO: do i want a non-panicking setter?
 void SM_set_or_panic(SMatF A, long row, long col, float val) {
   long idx = SM_idx(A, row, col);
@@ -231,6 +253,95 @@ float *SM_ptr_or_panic(SMatF A, long row, long col) {
   assert(idx != SM_NOT_PRESENT &&
          "Can only get pointer to non-zero type element in SMatF");
   return &A.vals[idx];
+}
+
+SMatF SM_addsub_prepare(SMatF A, SMatF B) {
+  assert((A.nrows == B.nrows && A.ncols == B.ncols)
+         && "Size mismatch. A and B need to have the same size!");
+
+	// short circuit if a and b have the same structure
+	if (SM_structure_eq(A, B)) return SM_empty_like(A);
+  // compute number of values in target
+  long nvals = 0;
+  for (long col = 0; col < B.ncols; ++col) { // columns in target
+    for (long row = 0; row < A.nrows; ++row) { // rows in target
+      if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
+        ++nvals;
+      }
+    }
+  }
+
+  SMatF ret = SM_empty(A.nrows, A.ncols, nvals);
+  long cur_val_idx = 0;
+  for (long row = 0; row < A.nrows; ++row) { // rows in target
+    for (long col = 0; col < B.ncols; ++col) { // columns in target
+      if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
+        ++ret.row_sizes[row];
+        ++ret.col_sizes[col];
+        ret.col_pos[cur_val_idx] = col;
+        ++cur_val_idx;
+      }
+    }
+  }
+
+  cur_val_idx = 0;
+  for (long row = 0; row < A.nrows; ++row) { // rows in target
+    for (long col = 0; col < B.ncols; ++col) { // columns in target
+      ret.col_idcs[cur_val_idx] = SM_idx(ret, row, col);
+      ++cur_val_idx;
+    }
+  }
+
+  // row and column starts
+  ret.row_starts[0] = 0;
+  for (long row = 1; row < ret.nrows; ++row) {
+    ret.row_starts[row] = ret.row_starts[row - 1] + ret.row_sizes[row - 1];
+  }
+
+  ret.col_starts[0] = 0;
+  for (long col = 1; col < ret.ncols; ++col) {
+    ret.col_starts[col] = ret.col_starts[col - 1] + ret.col_sizes[col - 1];
+  }
+
+  return ret;
+}
+
+void SM_add(SMatF A, SMatF B, SMatF target) {
+  assert((A.nrows == B.nrows && A.ncols == B.ncols)
+         && (target.ncols == A.ncols && target.nrows == A.nrows)
+         && "Size mismatch. A, B, and target need to have the same size!");
+
+  for (long row = 0; row < target.nrows; ++row) {
+    for (long col = 0; col < target.nrows; ++col) {
+      if (SM_has_loc(target, row, col)) {
+        // TODO: think about checking querying nonzero in A or B first, but i think this is more efficient right now.
+        SM_set_or_panic(target, row, col, SM_at(A, row, col) + SM_at(B, row, col));
+      }
+    }
+  }
+}
+
+void SM_sub(SMatF A, SMatF B, SMatF target) {
+  assert((A.nrows == B.nrows && A.ncols == B.ncols)
+         && (target.ncols == A.ncols && target.nrows == A.nrows)
+         && "Size mismatch. A, B, and target need to have the same size!");
+
+  for (long row = 0; row < target.nrows; ++row) {
+    for (long col = 0; col < target.nrows; ++col) {
+      if (SM_has_loc(target, row, col)) {
+        // TODO: think about checking querying nonzero in A or B first, but i think this is more efficient right now.
+        SM_set_or_panic(target, row, col, SM_at(A, row, col) - SM_at(B, row, col));
+      }
+    }
+  }
+}
+
+void SM_scl(SMatF A, float s, SMatF target) {
+	assert(SM_structure_eq(A, target) && "A and target must have the same shape!");
+
+  for (long i = 0; i < A.nvals; ++i) {
+    target.vals[i] = A.vals[i] * s;
+  }
 }
 
 void SM_prod(SMatF A, SMatF B, SMatF target) {
