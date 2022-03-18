@@ -180,8 +180,14 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
     last_idx = cur_idx;
   }
 
-  for (long i = 0; i < n_vals; ++i) {
-    ret.col_idcs[i] = SM_idx(ret, row_pos[i], col_pos[i]);
+  long idx = 0;
+  for (long col = 0; col < ret.ncols; ++col) {
+    for (long row = 0; row < ret.nrows; ++row) {
+      if (SM_has_loc(ret, row, col)) {
+        ret.col_idcs[idx] = SM_idx(ret, row, col);
+        ++idx;
+      }
+    }
   }
 
   return ret;
