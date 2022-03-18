@@ -566,7 +566,7 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
   cur_idx = 0;
   for (long t_col = 0; t_col < ret.ncols; t_col++) {
     for (long t_row = 0; t_row < ret.nrows;
-         t_row++) { // iterate on row, column in target
+         t_row++) { // iterate on column, row in target
       for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
         // Test idx in A and B for column / row respectively
         if (SM_has_loc(ret, t_row, t_col)) {
