@@ -244,7 +244,6 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
 SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size) {
   SMatF ret = SM_empty_diag(diags, n_diags, size);
 
-  SM_print_nonzero(ret);
   for (long d = 0; d < n_diags; ++d) {
     const long cur_diag = diags[d];
     long row = cur_diag > 0 ? 0 : -cur_diag;
