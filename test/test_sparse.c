@@ -11,14 +11,14 @@
 
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
 
-int comp_long(const void* a, const void* b) {
-  long va = *(long*)a;
-  long vb = *(long*)b;
+int comp_long(const void *a, const void *b) {
+  long va = *(long *)a;
+  long vb = *(long *)b;
   return va > vb;
 }
 
 void gen_randoms(long *rows, long *cols, float *vals, long n_vals) {
-  long* idcs = malloc(n_vals * sizeof(long));
+  long *idcs = malloc(n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
     bool repeat = true;
@@ -59,10 +59,10 @@ SMatF gen_random_square(long size, long n_vals) {
   return ret;
 }
 
-// Test matrix product of random matrix with identity. If result and input matrix are
-// identical, the product should be working correctly.
+// Test matrix product of random matrix with identity. If result and input
+// matrix are identical, the product should be working correctly.
 void test_random_pos_prod() {
-  SMatF identity = SM_diag_regular((long[1]){ 0 }, (float[1]){ 1.0f }, 1, SIZE);
+  SMatF identity = SM_diag_regular((long[1]){0}, (float[1]){1.0f}, 1, SIZE);
 
   SMatF A = gen_random_square(SIZE, N_VALS);
   SMatF target = SM_prod_prepare(A, identity);
@@ -71,7 +71,8 @@ void test_random_pos_prod() {
 
   if (SM_eq(A, target))
     TEST_PASS("Random matrix product with identity");
-  else TEST_FAIL("Random matrix product with identity");
+  else
+    TEST_FAIL("Random matrix product with identity");
 
   SM_free(A);
   SM_free(identity);
@@ -134,22 +135,87 @@ void test_tridiag_vec_prod() {
 
 void test_equality_self() {
   const SMatF A = gen_random_square(SIZE, N_VALS);
-  
+
   if (SM_eq(A, A))
     TEST_PASS("Random matrix self equality");
-  else TEST_FAIL("Random matrix self equality");
+  else
+    TEST_FAIL("Random matrix self equality");
 
   SM_free(A);
 }
 
 void test_structure_equality_self() {
   const SMatF A = gen_random_square(SIZE, N_VALS);
-  
+
   if (SM_structure_eq(A, A))
     TEST_PASS("Random structural self equality");
-  else TEST_FAIL("Random structureal self equality");
+  else
+    TEST_FAIL("Random structureal self equality");
 
   SM_free(A);
+}
+
+void test_add_sub_random() {
+  SMatF A = gen_random_square(SIZE, N_VALS);
+  SMatF B = gen_random_square(SIZE, N_VALS);
+
+  SMatF target = SM_addsub_prepare(A, B);
+  SM_add(A, B, target);
+
+  for (long row = 0; row < SIZE; ++row) {
+    for (long col = 0; col < SIZE; ++col) {
+      float t = SM_at(target, row, col);
+      float a = SM_at(A, row, col);
+      float b = SM_at(B, row, col);
+
+      if (t != a + b) {
+        TEST_FAIL_MSG("Matrix Addition", "Failed at (%ld, %ld) (%f + %f != %f)",
+                      row, col, a, b, t);
+        break;
+      }
+    }
+  }
+  TEST_PASS("Matrix Addition");
+
+  SM_sub(A, B, target);
+
+  for (long row = 0; row < SIZE; ++row) {
+    for (long col = 0; col < SIZE; ++col) {
+      float t = SM_at(target, row, col);
+      float a = SM_at(A, row, col);
+      float b = SM_at(B, row, col);
+
+      if (t != a - b) {
+        TEST_FAIL_MSG("Matrix Subtraction", "Failed at (%ld, %ld) (%f - %f != %f)",
+                      row, col, a, b, t);
+        break;
+      }
+    }
+  }
+  TEST_PASS("Matrix Subtraction");
+
+  float scale_fac = rand_float() * 10.0f;
+  SMatF target2 = SM_empty_like(A);
+  SM_scl(A, scale_fac, target2);
+
+  for (long row = 0; row < SIZE; ++row) {
+    for (long col = 0; col < SIZE; ++col) {
+      float t = SM_at(target2, row, col);
+      float a = SM_at(A, row, col);
+
+      if (t != a * scale_fac) {
+        TEST_FAIL_MSG("Matrix Scaling", "Failed at (%ld, %ld) (%f * %f != %f)",
+                      row, col, a, scale_fac, t);
+        break;
+      }
+    }
+  }
+  TEST_PASS("Matrix Scaling");
+
+  SM_free(A);
+  SM_free(B);
+  SM_free(target);
+  SM_free(target2);
 }
 
 int main(void) {
@@ -158,5 +224,6 @@ int main(void) {
   test_equality_self();
   test_tridiag_vec_prod();
   test_random_pos_prod();
+  test_add_sub_random();
   return EXIT_SUCCESS;
 }

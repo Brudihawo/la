@@ -417,10 +417,12 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
 	SM_init_start_arrs(ret);
 
   cur_val_idx = 0;
-  for (long row = 0; row < A.nrows; ++row) {   // rows in target
-    for (long col = 0; col < B.ncols; ++col) { // columns in target
-      ret.col_idcs[cur_val_idx] = SM_idx(ret, row, col);
-      ++cur_val_idx;
+  for (long row = 0; row < ret.nrows; ++row) {   // rows in target
+    for (long col = 0; col < ret.ncols; ++col) { // columns in target
+      if (SM_has_loc(ret, row, col)) {
+        ret.col_idcs[cur_val_idx] = SM_idx(ret, row, col);
+        ++cur_val_idx;
+      }
     }
   }
 
