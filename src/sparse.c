@@ -309,23 +309,26 @@ bool SM_structure_eq(SMatF A, SMatF B) {
   if (A.ncols != B.ncols || A.nrows != B.nrows || A.nvals != B.nvals)
     return false;
 
-  for (long row = 0; row < A.nrows; ++row) {
-    if ((A.row_sizes[row] != B.row_sizes[row]) ||
-        (A.row_starts[row] != B.row_starts[row]))
-      return false;
-  }
+  if (memcmp(A.row_sizes, B.row_sizes, A.nrows * sizeof(long))) return false;
+  if (memcmp(A.row_starts, B.row_starts, A.nrows * sizeof(long))) return false;
 
-  for (long col = 0; col < A.ncols; ++col) {
-    if ((A.col_sizes[col] != B.col_sizes[col]) ||
-        (A.col_starts[col] != B.col_starts[col]))
-      return false;
-  }
+  if (memcmp(A.col_sizes, B.col_sizes, A.ncols * sizeof(long))) return false;
+  if (memcmp(A.col_starts, B.col_starts, A.ncols * sizeof(long))) return false;
 
-  for (long i = 0; i < A.nvals; ++i) {
-    if (A.col_pos[i] != B.col_pos[i] || A.col_idcs[i] != B.col_idcs[i])
-      return false;
-  }
+  if (memcmp(A.col_pos, B.col_pos, A.nvals * sizeof(long))) return false;
+  if (memcmp(A.col_idcs, B.col_idcs, A.nvals * sizeof(long))) return false;
 
+  return true;
+}
+
+bool SM_eq(SMatF A, SMatF B) {
+  // compare structure / short circuit
+  if (!SM_structure_eq(A, B)) return false;
+
+  // compare values
+  if (memcmp(A.vals, B.vals, A.nvals * sizeof(float)) != 0) return false;
+
+  // if non-zero structure and values are equal, A and B are equal
   return true;
 }
 

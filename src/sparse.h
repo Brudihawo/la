@@ -129,6 +129,15 @@ long SM_idx(SMatF A, long row, long col);
  */
 bool SM_structure_eq(SMatF A, SMatF B);
 
+/* @brief Check for equality of A and B
+ *
+ * @param A
+ * @param B
+ *
+ * @return whether A and B are equal (element-wise comparison)
+ */
+bool SM_eq(SMatF A, SMatF B);
+
 /* @brief Get column from column index and row
  *
  * @param A SMatF to query
