@@ -66,7 +66,7 @@ SMatF SM_empty_like(SMatF A) {
 }
 
 /* @brief initialize row / column start arrays after row / column sizes have
- *        been initialized.
+ *        been initialized. For internal use only. This is not in the header
  */
 void SM_init_start_arrs(SMatF A) {
   A.row_starts[0] = 0;
@@ -147,10 +147,12 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
   memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
-    assert((row_pos[i] > 0 && row_pos[i] < n_rows) &&
-           "Row Position out of bounds");
-    assert((col_pos[i] > 0 && col_pos[i] < n_cols) &&
-           "Column Position out of bounds");
+    if ((row_pos[i] < 0 || row_pos[i] >= n_rows)
+        || (col_pos[i] < 0 || col_pos[i] >= n_cols)) {
+      log_err("Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)");
+      exit(EXIT_FAILURE);
+    }
+
     // increment corresponding row and column sizes
     ++ret.col_sizes[col_pos[i]];
     ++ret.row_sizes[row_pos[i]];
@@ -162,12 +164,22 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
   long last_idx = -1;
   for (long i = 0; i < n_vals; ++i) {
     long cur_idx = SM_idx(ret, row_pos[i], col_pos[i]);
-    assert(last_idx < cur_idx &&
-           "Positions need to be passed in row-major order");
+    if (last_idx > cur_idx) {
+      assert(i != 0);
+      log_err("Positions need to be passed in row-major order "
+              "(not satisfied by last and current positions %ld / %ld at (%ld, %ld) "
+              "and (%ld, %ld) with row-major indices %ld and %ld: %ld > %ld)",
+              i - 1, i,
+              row_pos[i - 1], col_pos[i - 1],
+              row_pos[i], col_pos[i],
+              last_idx, cur_idx,
+              last_idx, cur_idx);
+      exit(EXIT_FAILURE);
+    }
+
     last_idx = cur_idx;
   }
 
-  ret.col_pos = col_pos;
   for (long i = 0; i < n_vals; ++i) {
     ret.col_idcs[i] = SM_idx(ret, row_pos[i], col_pos[i]);
   }
