@@ -14,13 +14,13 @@ SMatF SM_empty(long rows, long cols, long n_vals) {
       .ncols = cols,
       .nvals = n_vals,
 
-      .col_sizes = malloc(cols * sizeof(long)),
+      .col_sizes = calloc(cols, sizeof(long)),
       .col_starts = malloc(cols * sizeof(long)),
       .col_idcs = malloc(n_vals * sizeof(long)),
       .col_pos = malloc(n_vals * sizeof(long)),
       .vals = malloc(n_vals * sizeof(float)),
       .row_starts = malloc(rows * sizeof(long)),
-      .row_sizes = malloc(rows * sizeof(long)),
+      .row_sizes = calloc(rows, sizeof(long)),
   };
 }
 
@@ -70,12 +70,12 @@ SMatF SM_empty_like(SMatF A) {
  */
 void SM_init_start_arrs(SMatF A) {
   A.row_starts[0] = 0;
-  for (long row = 0; row < A.nrows; ++row) {
+  for (long row = 1; row < A.nrows; ++row) {
     A.row_starts[row] = A.row_starts[row - 1] + A.row_sizes[row - 1];
   }
 
   A.col_starts[0] = 0;
-  for (long col = 0; col < A.ncols; ++col) {
+  for (long col = 1; col < A.ncols; ++col) {
     A.col_starts[col] = A.col_starts[col - 1] + A.col_sizes[col - 1];
   }
 }
@@ -199,7 +199,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
       // check value present in row and diagonal
       // rc_idx represents a row here
       if (((cur_diag < 0) && (rc_idx >= -cur_diag)) || // diagonal below main
-          ((cur_diag >= 0) && (rc_idx < size - cur_diag))) { // diagonal above
+          ((cur_diag >= 0) && (rc_idx + cur_diag < size))) { // diagonal above
         // row sizes
         ++ret.row_sizes[rc_idx];
 
@@ -211,7 +211,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
       // check value present in column and diagonal
       // rc_idx represents a column here
       if (((cur_diag >= 0) && (rc_idx >= cur_diag)) || // diagonal above main
-          ((cur_diag < 0) && (rc_idx < size + cur_diag))) { // diagonal below
+          ((cur_diag < 0) && (rc_idx - cur_diag < size))) { // diagonal below
         // column sizes
         ++ret.col_sizes[rc_idx];
       }
@@ -219,14 +219,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
   }
 
   // row / column starts
-  ret.row_starts[0] = 0;
-  ret.col_starts[0] = 0;
-  for (long row_col = 1; row_col < size; ++row_col) {
-    ret.row_starts[row_col] =
-        ret.row_starts[row_col - 1] + ret.row_sizes[row_col - 1];
-    ret.col_starts[row_col] =
-        ret.col_starts[row_col - 1] + ret.col_sizes[row_col - 1];
-  }
+  SM_init_start_arrs(ret);
 
   long count_col = 0;
   for (long col = 0; col < size; ++col) {
@@ -234,8 +227,8 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
       const long cur_diag = diags[d];
       // check value present in column and diagonal
       // rc_idx represents a column here
-      if (((cur_diag >= 0) && (col >= -cur_diag)) ||     // diagonal above main
-          ((cur_diag < 0) && (col < size - cur_diag))) { // diagonal below
+      if (((cur_diag >= 0) && (col >= cur_diag)) ||     // diagonal above main
+          ((cur_diag < 0) && (col - cur_diag < size))) { // diagonal below
         // set row-major index in column-major index array
         // ret.col_idcs[row_col]
         long cur_row = col - cur_diag;
@@ -251,6 +244,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
 SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size) {
   SMatF ret = SM_empty_diag(diags, n_diags, size);
 
+  SM_print_nonzero(ret);
   for (long d = 0; d < n_diags; ++d) {
     const long cur_diag = diags[d];
     long row = cur_diag > 0 ? 0 : -cur_diag;
@@ -280,7 +274,8 @@ bool SM_has_loc(SMatF A, long row, long col) {
 }
 
 long SM_idx(SMatF A, long row, long col) {
-  if (row > A.nrows || col > A.ncols) {
+  if ((row >= A.nrows || col >= A.ncols)
+      || (row < 0 || col < 0)) {
     log_err("Position (%ld, %ld) out of bounds in Matrix of size (%ld, %ld).",
             row, col, A.nrows, A.ncols);
     exit(EXIT_FAILURE);
@@ -350,7 +345,7 @@ long SM_col(SMatF A, long row, long col_idx) {
 
 long SM_col_or_panic(SMatF A, long row, long col_idx) {
   long col = SM_col(A, row, col_idx); // column in target
-  assert(col != SM_NOT_PRESENT && "Bug in row->column-iteration");
+  assert(col != SM_NOT_PRESENT && col > -1 && "Bug in row->column-iteration");
   return col;
 }
 
@@ -391,8 +386,8 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
   for (long row = 0; row < A.nrows; ++row) {   // rows in target
     for (long col = 0; col < B.ncols; ++col) { // columns in target
       if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
-        ++ret.row_sizes[row];
-        ++ret.col_sizes[col];
+        ret.row_sizes[row] += 1;
+        ret.col_sizes[col] += 1;
         ret.col_pos[cur_val_idx] = col;
         ++cur_val_idx;
       }
@@ -534,8 +529,8 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
          t_col++) { // iterate on row, column in target
       for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
         // Test idx in A and B for column / row respectively
-
-        if (SM_has_loc(A, t_row, test_idx) && SM_has_loc(B, test_idx, t_col)) {
+        const long test_pos = SM_col_or_panic(A, t_row, test_idx);
+        if (SM_has_loc(A, t_row, test_pos) && SM_has_loc(B, test_pos, t_col)) {
           ret.col_pos[cur_idx] = t_col;
           cur_idx++;
           break;
@@ -601,10 +596,10 @@ void SM_print_meta(SMatF A) {
 
 void SM_free(SMatF A) {
   free(A.vals);
-  free(A.col_pos);
   free(A.col_idcs);
   free(A.row_sizes);
   free(A.col_sizes);
   free(A.row_starts);
   free(A.col_starts);
+  free(A.col_pos);
 }
