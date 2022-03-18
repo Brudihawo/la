@@ -1,4 +1,4 @@
-CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -g
+CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -O3
 TEST_FLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
 LIBS := -lm
 CC := clang
@@ -27,11 +27,16 @@ test_solv: la_lib
 	$(CC) $(TESTDIR)/test_solv.c $(SRCDIR)/la.a -o $(TESTDIR)/test_solv \
 		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src
 
-test_sparse:
+test_sparse: la_lib
 	$(CC) $(TESTDIR)/test_sparse.c $(SRCDIR)/la.a -o $(TESTDIR)/test_sparse \
 		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src
 
-test: test_solv test_sparse
+benchmark: la_lib
+	$(CC) $(TESTDIR)/bench_multiplication.c $(SRCDIR)/la.a \
+		-o $(TESTDIR)/bench_multiplication \
+		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src -O3
+
+test: test_solv test_sparse benchmark
 
 coverage: clean test
 	./coverage.sh
@@ -41,4 +46,5 @@ clean:
 	rm -vf $(SRCDIR)*.a
 	rm -vf $(TESTDIR)/test_solv
 	rm -vf $(TESTDIR)/test_sparse
+	rm -vf $(TESTDIR)/benchmark_multiplication
 	rm -vfr coverage

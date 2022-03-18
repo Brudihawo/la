@@ -12,8 +12,8 @@
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
 
 int comp_long(const void *a, const void *b) {
-  long va = *(long *)a;
-  long vb = *(long *)b;
+  const long va = *(long *)a;
+  const long vb = *(long *)b;
   return va > vb;
 }
 
