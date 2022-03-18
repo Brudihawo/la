@@ -68,9 +68,6 @@ void test_random_pos_prod() {
   SMatF target = SM_prod_prepare(A, identity);
 
   SM_prod(A, identity, target);
-  SM_print_nonzero(A);
-  printf("\n");
-  SM_print_nonzero(target);
 
   if (SM_eq(A, target))
     TEST_PASS("Random matrix product with identity");
