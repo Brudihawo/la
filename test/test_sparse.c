@@ -135,7 +135,31 @@ void test_tridiag_vec_prod() {
   SM_free(res);
 }
 
+void test_equality_self() {
+  const SMatF A = gen_random_square(SIZE, N_VALS);
+  
+  if (SM_eq(A, A))
+    TEST_PASS("Random matrix self equality");
+  else TEST_FAIL("Random matrix self equality");
+
+  SM_free(A);
+}
+
+void test_structure_equality_self() {
+  const SMatF A = gen_random_square(SIZE, N_VALS);
+  
+  if (SM_structure_eq(A, A))
+    TEST_PASS("Random structural self equality");
+  else TEST_FAIL("Random structureal self equality");
+
+  SM_free(A);
+}
+
 int main(void) {
+  srand(69);
+  test_structure_equality_self();
+  test_equality_self();
   test_tridiag_vec_prod();
+  test_random_pos_prod();
   return EXIT_SUCCESS;
 }
