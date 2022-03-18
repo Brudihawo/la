@@ -11,35 +11,74 @@
 
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
 
+int comp_long(const void* a, const void* b) {
+  long va = *(long*)a;
+  long vb = *(long*)b;
+  return va > vb;
+}
+
 void gen_randoms(long *rows, long *cols, float *vals, long n_vals) {
+  long* idcs = malloc(n_vals * sizeof(long));
+
   for (long i = 0; i < n_vals; ++i) {
     bool repeat = true;
     while (repeat) {
       vals[i] = rand_float();
-      cols[i] = rand() % SIZE;
-      rows[i] = rand() % SIZE;
+      idcs[i] = rand() % (SIZE * SIZE);
+
       repeat = false;
       for (long j = 0; j < i; j++) {
-        if (cols[j] == cols[i] && rows[j] == rows[i]) {
+        if (idcs[j] == idcs[i]) {
           repeat = true;
         }
       }
     }
   }
+  qsort(idcs, n_vals, sizeof(long), comp_long);
+
+  for (long i = 0; i < n_vals; ++i) {
+    cols[i] = idcs[i] % SIZE;
+    rows[i] = idcs[i] / SIZE;
+  }
+  free(idcs);
 }
 
-void test_random_pos_prod() {
-  float *vals = malloc(N_VALS * sizeof(float));
-  long *pos_row = malloc(N_VALS * sizeof(long));
-  long *pos_col = malloc(N_VALS * sizeof(long));
+SMatF gen_random_square(long size, long n_vals) {
+  float *vals = malloc(n_vals * sizeof(float));
+  long *pos_row = malloc(n_vals * sizeof(long));
+  long *pos_col = malloc(n_vals * sizeof(long));
 
-  gen_randoms(pos_row, pos_col, vals, N_VALS);
+  gen_randoms(pos_row, pos_col, vals, n_vals);
 
-  SM_from_pos_with(SIZE, SIZE, N_VALS, pos_row, pos_col, vals);
+  SMatF ret = SM_from_pos_with(size, size, n_vals, pos_row, pos_col, vals);
 
   free(vals);
   free(pos_row);
-  free(pos_row);
+  free(pos_col);
+
+  return ret;
+}
+
+// Test matrix product of random matrix with identity. If result and input matrix are
+// identical, the product should be working correctly.
+void test_random_pos_prod() {
+  SMatF identity = SM_diag_regular((long[1]){ 0 }, (float[1]){ 1.0f }, 1, SIZE);
+
+  SMatF A = gen_random_square(SIZE, N_VALS);
+  SMatF target = SM_prod_prepare(A, identity);
+
+  SM_prod(A, identity, target);
+  SM_print_nonzero(A);
+  printf("\n");
+  SM_print_nonzero(target);
+
+  if (SM_eq(A, target))
+    TEST_PASS("Random matrix product with identity");
+  else TEST_FAIL("Random matrix product with identity");
+
+  SM_free(A);
+  SM_free(identity);
+  SM_free(target);
 }
 
 void test_tridiag_vec_prod() {
