@@ -1,4 +1,4 @@
-CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -O3
+CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -g
 TEST_FLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
 LIBS := -lm
 CC := clang
