@@ -5,14 +5,14 @@ Provides Matrix, Vector Multiplication etc. This is a work in progress.
 # TODO
 
 - [ ] SMatF Initialisation functions
-- [ ] SMatF Deinitialisation functions
+- [x] SMatF Deinitialisation functions
 - [ ] Verify SMatF product correctness with tests (maybe rely on MatF Multiplication)
 - [ ] SMatF Iterative Methods for linear systems of equations
-- [ ] Benchmark SMatF vs MatF product
-- [ ] Sorting algorithms so i dont require some inputs to be sorted
+- [x] Benchmark SMatF vs MatF product
+- [ ] valgrind for profiling
+- [ ] SMatF check for nvals < rows * cols
 
 ## In-File-TODOs:
-
 
 - [ ] `./src/matf.c:37`: TODO: can i somehow check that rows * cols = sizeof vals?
 - [ ] `./src/matf.c:102`: TODO: Handle size checks nicely
