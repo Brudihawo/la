@@ -2,7 +2,9 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+#include "matf.h"
 #include "sparse.h"
+
 #include "test_util.h"
 
 #define N_DIAGS 3
@@ -17,14 +19,15 @@ int comp_long(const void *a, const void *b) {
   return va > vb;
 }
 
-void gen_randoms(long *rows, long *cols, float *vals, long n_vals) {
+void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
+                 long n_cols) {
   long *idcs = malloc(n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
     bool repeat = true;
     while (repeat) {
       vals[i] = rand_float();
-      idcs[i] = rand() % (SIZE * SIZE);
+      idcs[i] = rand() % (n_rows * n_cols);
 
       repeat = false;
       for (long j = 0; j < i; j++) {
@@ -37,20 +40,20 @@ void gen_randoms(long *rows, long *cols, float *vals, long n_vals) {
   qsort(idcs, n_vals, sizeof(long), comp_long);
 
   for (long i = 0; i < n_vals; ++i) {
-    cols[i] = idcs[i] % SIZE;
-    rows[i] = idcs[i] / SIZE;
+    cols[i] = idcs[i] % n_cols;
+    rows[i] = idcs[i] / n_cols;
   }
   free(idcs);
 }
 
-SMatF gen_random_square(long size, long n_vals) {
+SMatF gen_random(long n_vals, long n_rows, long n_cols) {
   float *vals = malloc(n_vals * sizeof(float));
   long *pos_row = malloc(n_vals * sizeof(long));
   long *pos_col = malloc(n_vals * sizeof(long));
 
-  gen_randoms(pos_row, pos_col, vals, n_vals);
+  gen_randoms(pos_row, pos_col, vals, n_vals, n_rows, n_cols);
 
-  SMatF ret = SM_from_pos_with(size, size, n_vals, pos_row, pos_col, vals);
+  SMatF ret = SM_from_pos_with(n_rows, n_cols, n_vals, pos_row, pos_col, vals);
 
   free(vals);
   free(pos_row);
@@ -64,7 +67,7 @@ SMatF gen_random_square(long size, long n_vals) {
 void test_random_pos_prod() {
   SMatF identity = SM_diag_regular((long[1]){0}, (float[1]){1.0f}, 1, SIZE);
 
-  SMatF A = gen_random_square(SIZE, N_VALS);
+  SMatF A = gen_random(N_VALS, SIZE, SIZE);
   SMatF target = SM_prod_prepare(A, identity);
 
   SM_prod(A, identity, target);
@@ -77,6 +80,72 @@ void test_random_pos_prod() {
   SM_free(A);
   SM_free(identity);
   SM_free(target);
+}
+
+void test_random_pos_dif_sizes_prod_ver_matf() {
+  float *values_A = malloc(N_VALS * sizeof(float));
+  long *row_pos_A = malloc(N_VALS * sizeof(long));
+  long *col_pos_A = malloc(N_VALS * sizeof(long));
+
+  float *values_B = malloc(N_VALS * sizeof(float));
+  long *row_pos_B = malloc(N_VALS * sizeof(long));
+  long *col_pos_B = malloc(N_VALS * sizeof(long));
+
+  long a_rows = SIZE;
+  long a_cols = SIZE + 5;
+  long b_rows = SIZE + 5;
+  long b_cols = SIZE;
+
+  gen_randoms(row_pos_A, col_pos_A, values_A, N_VALS, a_rows, a_cols);
+  gen_randoms(row_pos_B, col_pos_B, values_B, N_VALS, b_rows, b_cols);
+
+  SMatF s_A =
+      SM_from_pos_with(a_rows, a_cols, N_VALS, row_pos_A, col_pos_A, values_A);
+  SMatF s_B =
+      SM_from_pos_with(b_rows, b_cols, N_VALS, row_pos_B, col_pos_B, values_B);
+
+  SMatF s_T = SM_prod_prepare(s_A, s_B);
+  SM_prod(s_A, s_B, s_T);
+
+  MatF m_A = MF_with(a_rows, a_cols, 0.0f);
+  MatF m_B = MF_with(b_rows, b_cols, 0.0f);
+  MatF m_T = MF_empty(a_rows, b_cols);
+
+  for (long i = 0; i < N_VALS; ++i) {
+    *MF_PTR(m_A, row_pos_A[i], col_pos_A[i]) = values_A[i];
+    *MF_PTR(m_B, row_pos_B[i], col_pos_B[i]) = values_B[i];
+  }
+
+  MF_prod(m_A, m_B, m_T);
+
+  bool fail = false;
+  for (long row = 0; row < m_T.rows; ++row) {
+    for (long col = 0; col < m_T.cols; ++col) {
+      if (SM_at(s_T, row, col) != MF_AT(m_T, row, col)) {
+        TEST_FAIL_MSG("Matrix multiplication verified with MatF",
+                      "Mismatch at (%ld, %ld)", row, col);
+        fail = true;
+        break;
+      }
+    }
+  }
+
+  if (!fail) TEST_PASS("Matrix multiplication verified with MatF");
+
+  SM_free(s_A);
+  SM_free(s_B);
+  SM_free(s_T);
+
+  MF_FREE(m_A);
+  MF_FREE(m_B);
+  MF_FREE(m_T);
+
+  free(values_A);
+  free(values_B);
+  free(row_pos_A);
+  free(row_pos_B);
+  free(col_pos_A);
+  free(col_pos_B);
 }
 
 void test_tridiag_vec_prod() {
@@ -134,7 +203,7 @@ void test_tridiag_vec_prod() {
 }
 
 void test_equality_self() {
-  const SMatF A = gen_random_square(SIZE, N_VALS);
+  const SMatF A = gen_random(N_VALS, SIZE, SIZE);
 
   if (SM_eq(A, A))
     TEST_PASS("Random matrix self equality");
@@ -145,7 +214,7 @@ void test_equality_self() {
 }
 
 void test_structure_equality_self() {
-  const SMatF A = gen_random_square(SIZE, N_VALS);
+  const SMatF A = gen_random(N_VALS, SIZE, SIZE);
 
   if (SM_structure_eq(A, A))
     TEST_PASS("Random structural self equality");
@@ -156,8 +225,8 @@ void test_structure_equality_self() {
 }
 
 void test_add_sub_random() {
-  SMatF A = gen_random_square(SIZE, N_VALS);
-  SMatF B = gen_random_square(SIZE, N_VALS);
+  SMatF A = gen_random(N_VALS, SIZE, SIZE);
+  SMatF B = gen_random(N_VALS, SIZE, SIZE);
 
   SMatF target = SM_addsub_prepare(A, B);
   SM_add(A, B, target);
@@ -186,8 +255,9 @@ void test_add_sub_random() {
       float b = SM_at(B, row, col);
 
       if (t != a - b) {
-        TEST_FAIL_MSG("Matrix Subtraction", "Failed at (%ld, %ld) (%f - %f != %f)",
-                      row, col, a, b, t);
+        TEST_FAIL_MSG("Matrix Subtraction",
+                      "Failed at (%ld, %ld) (%f - %f != %f)", row, col, a, b,
+                      t);
         break;
       }
     }
@@ -223,6 +293,7 @@ int main(void) {
   test_structure_equality_self();
   test_equality_self();
   test_tridiag_vec_prod();
+  test_random_pos_dif_sizes_prod_ver_matf();
   test_random_pos_prod();
   test_add_sub_random();
   return EXIT_SUCCESS;
