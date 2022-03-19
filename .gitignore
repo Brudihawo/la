@@ -8,5 +8,6 @@ test/*
 !test/*.[ch]
 
 coverage/*
+callgrind*
 
 docs/*
