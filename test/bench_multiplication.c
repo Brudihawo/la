@@ -85,7 +85,7 @@ void matrix_product_time(long size, long nvals) {
   clock_t s_end = clock();
   double s_time = (double) (s_end - s_start) / CLOCKS_PER_SEC;
 
-  printf("MatF: %.8fs | SMatF: %.8fs\n", m_time, s_time);
+  printf("%5ld %13.8fs %13.8fs\n", size, m_time, s_time);
 
   SM_free(s_A);
   SM_free(s_B);
@@ -101,8 +101,9 @@ void matrix_product_time(long size, long nvals) {
 
 int main(void) {
   srand(69);
-  for (int order = 1; order < 10; ++order) {
-    const long size = (long)pow(8, order);
+  printf("# SIZE   MatF           SMatF\n");
+  for (int order = 2; order < 5; ++order) {
+    const long size = (long)pow(4, order);
     const long nvals = size * 5;
 
     matrix_product_time(size, nvals);
