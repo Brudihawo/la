@@ -100,6 +100,10 @@ void test_lu_normal() {
   MF_prod(A2, u, c);
 
   pass_fail(c, b2, "lu normal");
+
+  if (perms != NULL)
+    RP_free(perms);
+  cleanup_test(&A, &A2, &b, &b2, &u, &c);
 }
 
 void test_lu_perm() {
@@ -114,6 +118,12 @@ void test_lu_perm() {
   MF_prod(A2, u, c);
 
   pass_fail(c, b2, "lu normal");
+
+  if (perms != NULL) {
+    RP_free(perms);
+    free(perms);
+  }
+  cleanup_test(&A, &A2, &b, &b2, &u, &c);
 }
 
 int main(void) {

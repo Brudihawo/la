@@ -321,8 +321,13 @@ RowPerm *MF_lu_decomp(MatF A) {
     }
   }
 
-  if (rperms->n_swaps == 0)
+  free(cpybuf);
+  if (rperms->n_swaps == 0) {
+    RP_free(rperms);
+    free(rperms);
     return NULL;
+  }
+
   return rperms;
 }
 
@@ -394,7 +399,7 @@ void MF_gauss_elim(MatF A, MatF b, MatF target) {
 
   // i need to do something with the permutations here
   // else wrong result
-  RP_FREE(perms);
+  RP_free(&perms);
 }
 
 void MF_make_tri_up(MatF A) {
