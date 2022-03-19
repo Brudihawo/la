@@ -108,7 +108,7 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
     ++ret.row_sizes[row_pos[i]];
   }
 
-	SM_init_start_arrs(ret);
+  SM_init_start_arrs(ret);
 
   // validate nonzero position order
   long last_idx = -1;
@@ -129,6 +129,12 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
 
 SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
                        long *col_pos, float *vals) {
+  if (n_vals >= n_rows * n_cols) {
+    log_err("SMatF number of values (%ld) cannot exceed the size of the Matrix "
+            "(%ld x %ld = %ld).", n_vals, n_rows, n_cols, n_rows * n_cols);
+    exit(EXIT_FAILURE);
+  }
+
   SMatF ret = {
       .nrows = n_rows,
       .ncols = n_cols,
@@ -147,9 +153,10 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
   memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
-    if ((row_pos[i] < 0 || row_pos[i] >= n_rows)
-        || (col_pos[i] < 0 || col_pos[i] >= n_cols)) {
-      log_err("Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)");
+    if ((row_pos[i] < 0 || row_pos[i] >= n_rows) ||
+        (col_pos[i] < 0 || col_pos[i] >= n_cols)) {
+      log_err(
+          "Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)");
       exit(EXIT_FAILURE);
     }
 
@@ -158,7 +165,7 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
     ++ret.row_sizes[row_pos[i]];
   }
 
-	SM_init_start_arrs(ret);
+  SM_init_start_arrs(ret);
 
   // validate nonzero position order
   long last_idx = -1;
@@ -167,13 +174,11 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
     if (last_idx > cur_idx) {
       assert(i != 0);
       log_err("Positions need to be passed in row-major order "
-              "(not satisfied by last and current positions %ld / %ld at (%ld, %ld) "
+              "(not satisfied by last and current positions %ld / %ld at (%ld, "
+              "%ld) "
               "and (%ld, %ld) with row-major indices %ld and %ld: %ld > %ld)",
-              i - 1, i,
-              row_pos[i - 1], col_pos[i - 1],
-              row_pos[i], col_pos[i],
-              last_idx, cur_idx,
-              last_idx, cur_idx);
+              i - 1, i, row_pos[i - 1], col_pos[i - 1], row_pos[i], col_pos[i],
+              last_idx, cur_idx, last_idx, cur_idx);
       exit(EXIT_FAILURE);
     }
 
@@ -245,7 +250,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
       const long cur_diag = diags[d];
       // check value present in column and diagonal
       // rc_idx represents a column here
-      if (((cur_diag >= 0) && (col >= cur_diag)) ||     // diagonal above main
+      if (((cur_diag >= 0) && (col >= cur_diag)) ||      // diagonal above main
           ((cur_diag < 0) && (col - cur_diag < size))) { // diagonal below
         // set row-major index in column-major index array
         // ret.col_idcs[row_col]
@@ -291,8 +296,7 @@ bool SM_has_loc(SMatF A, long row, long col) {
 }
 
 long SM_idx(SMatF A, long row, long col) {
-  if ((row >= A.nrows || col >= A.ncols)
-      || (row < 0 || col < 0)) {
+  if ((row >= A.nrows || col >= A.ncols) || (row < 0 || col < 0)) {
     log_err("Position (%ld, %ld) out of bounds in Matrix of size (%ld, %ld).",
             row, col, A.nrows, A.ncols);
     exit(EXIT_FAILURE);
@@ -315,24 +319,32 @@ bool SM_structure_eq(SMatF A, SMatF B) {
   if (A.ncols != B.ncols || A.nrows != B.nrows || A.nvals != B.nvals)
     return false;
 
-  if (memcmp(A.row_sizes, B.row_sizes, A.nrows * sizeof(long))) return false;
-  if (memcmp(A.row_starts, B.row_starts, A.nrows * sizeof(long))) return false;
+  if (memcmp(A.row_sizes, B.row_sizes, A.nrows * sizeof(long)))
+    return false;
+  if (memcmp(A.row_starts, B.row_starts, A.nrows * sizeof(long)))
+    return false;
 
-  if (memcmp(A.col_sizes, B.col_sizes, A.ncols * sizeof(long))) return false;
-  if (memcmp(A.col_starts, B.col_starts, A.ncols * sizeof(long))) return false;
+  if (memcmp(A.col_sizes, B.col_sizes, A.ncols * sizeof(long)))
+    return false;
+  if (memcmp(A.col_starts, B.col_starts, A.ncols * sizeof(long)))
+    return false;
 
-  if (memcmp(A.col_pos, B.col_pos, A.nvals * sizeof(long))) return false;
-  if (memcmp(A.col_idcs, B.col_idcs, A.nvals * sizeof(long))) return false;
+  if (memcmp(A.col_pos, B.col_pos, A.nvals * sizeof(long)))
+    return false;
+  if (memcmp(A.col_idcs, B.col_idcs, A.nvals * sizeof(long)))
+    return false;
 
   return true;
 }
 
 bool SM_eq(SMatF A, SMatF B) {
   // compare structure / short circuit
-  if (!SM_structure_eq(A, B)) return false;
+  if (!SM_structure_eq(A, B))
+    return false;
 
   // compare values
-  if (memcmp(A.vals, B.vals, A.nvals * sizeof(float)) != 0) return false;
+  if (memcmp(A.vals, B.vals, A.nvals * sizeof(float)) != 0)
+    return false;
 
   // if non-zero structure and values are equal, A and B are equal
   return true;
@@ -414,7 +426,7 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
     }
   }
 
-	SM_init_start_arrs(ret);
+  SM_init_start_arrs(ret);
 
   cur_val_idx = 0;
   for (long row = 0; row < ret.nrows; ++row) {   // rows in target
@@ -425,7 +437,6 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
       }
     }
   }
-
 
   return ret;
 }
@@ -537,7 +548,7 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
   }
 
   // Set row / column starts
-	SM_init_start_arrs(ret);
+  SM_init_start_arrs(ret);
 
   // allocate memory
   ret.vals = malloc(ret.nvals * sizeof(float));
