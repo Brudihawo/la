@@ -618,26 +618,98 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   }
 }
 
-void SM_jacobi(SMatF A, SMatF b, SMatF target, float rel_err_max, long n_iter) {
+SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
+                float stale_bound) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only perform the jacobi-method for matrix inversion on "
+            "invertible matrices. Here, A.nrows != A.ncols (%ld != %ld).",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  SMatF u_k = SM_empty_like(b);
+  SMatF u_k1 = SM_empty_like(b);
+
   // random initialisation of target
-  for (long i = 0; i < target.nvals; ++i) {
-    target.vals[i] = (float)rand() / (float)RAND_MAX;
+  for (long i = 0; i < u_k.nvals; ++i) {
+    u_k.vals[i] = (float)rand() / (float)RAND_MAX;
   }
 
   SMatF cur_result = SM_prod_prepare(A, b);
-  SMatF err = SM_empty_like(cur_result);
+  SMatF err = SM_empty_like(b);
+  float last_err = -1;
 
-  for (long i = 0; i < n_iter; ++i) {
-    SM_prod(A, target, cur_result);
+  for (long iter = 0; iter < n_iter; ++iter) {
+    SM_prod(A, u_k, cur_result);
     SM_sub(b, cur_result, err);
+    float rel_err = SM_abs(err) / SM_abs(b);
 
-    if (rel_err < rel_err_max)
+    if (rel_err < rel_err_max || rel_err / last_err > stale_bound) {
       break;
+    } else {
+      if (iter % 10 == 0)
+        log_msg("Iteration %ld: %f %f", iter, rel_err, rel_err / last_err);
+
+      last_err = rel_err;
+      for (long i = 0; i < u_k.nvals; ++i) {
+        u_k1.vals[i] = 0;
+        for (long j = 0; j < u_k.nvals; ++j) {
+          if (i == j)
+            continue;
+
+          if (SM_has_loc(A, i, j)) {
+            u_k1.vals[i] -= SM_at(A, i, j) * u_k.vals[j];
+          }
+        }
+        u_k1.vals[i] += SM_at(b, i, 0);
+        u_k1.vals[i] /= SM_at(A, i, i);
+      }
+
+      float *tmp = u_k.vals;
+      u_k.vals = u_k1.vals;
+      u_k1.vals = tmp;
+    }
   }
+
+  // TODO: [SM_jacobi] reduce allocations or move outside for repeated calling
+  SM_free(cur_result);
+  SM_free(err);
+  SM_free(u_k1);
+  return u_k;
+}
+
+SMatF SM_transpose(SMatF A) {
+  SMatF ret = SM_empty_like(A);
+
+  long* tmp_sizes;
+  tmp_sizes = ret.col_sizes;
+  ret.col_sizes = ret.row_sizes;
+  ret.row_sizes = tmp_sizes;
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_idx = 0; col_idx < A.col_sizes[row]; ++col_idx) {
+      long col = SM_col_or_panic(A, row, col_idx);
+
+      SM_set_or_panic(ret, col, row, SM_at(A, row, col));
+    }
+  }
+
+  SM_init_start_arrs(ret);
+
+  for (long row = 0; row < ret.nrows; ++row) {
+    for (long col_idx = 0; col_idx < ret.col_sizes[row]; ++col_idx) {
+      long col = SM_col_or_panic(ret, row, col_idx);
+    }
+  }
+
+  return ret;
 }
 
 void SM_gauss_seidel_or(SMatF A, SMatF b, SMatF target, float or, float rel_err,
                         long n_iter);
+
+// SMatF SM_conjugate_gradients(SMatF A, SMatF b, float rel_err) {
+// }
 
 void SM_print(SMatF A) {
   printf("[");
@@ -666,7 +738,7 @@ void SM_print_nonzero(SMatF A) {
   }
 }
 
-void SM_print_shape(SMatF A) { printf("(%ld x %ld)", A.nrows, A.ncols); }
+void SM_print_shape(SMatF A) { printf("(%ld x %ld)\n", A.nrows, A.ncols); }
 
 void SM_print_meta(SMatF A) {
   printf("SMatF (%ld x %ld), %ld values set.\n", A.nrows, A.ncols, A.nvals);

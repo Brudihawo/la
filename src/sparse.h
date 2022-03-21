@@ -20,6 +20,7 @@ typedef struct {
 #define SM_NOT_PRESENT -1
 
 #define SM_ROW_EMPTY(mat, row) ((mat).row_sizes[row] == 0)
+#define SM_COL_EMPTY(mat, col) ((mat).col_sizes[col] == 0)
 
 /* @brief Create empty sparse matrix
  *        Only allocates memory. No information on position of values is present
@@ -264,6 +265,19 @@ void SM_print_nonzero(SMatF A);
  * @param A SMatF to print
  */
 void SM_print_meta(SMatF A);
+
+/* @brief Use jacobi iterative method to solv A * u = b
+ *
+ * @param A Coefficient matrix
+ * @param b solution vector (A.nrows x 1)
+ * @param rel_err_max stop iteration at this relative error
+ * @param n_iter stop after n_iter iterations
+ * @param stale_bound stop if current_error / last_error < stale_bound
+ *
+ * @return solution u to A * u = b
+ */
+SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
+                float stale_bound);
 
 /* @brief Print shape of A
  *
