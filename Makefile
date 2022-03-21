@@ -1,16 +1,18 @@
 SRCDIR := ./src
 TESTDIR := ./test
+EXDIR := ./examples
 
 objs := $(patsubst %.c, %.o, $(wildcard $(SRCDIR)/*.c))
 benchs := $(patsubst %.c, %, $(wildcard $(TESTDIR)/bench_*.c))
 tests := $(patsubst %.c,%,$(wildcard $(TESTDIR)/test_*.c))
+examples := $(patsubst %.c,%,$(wildcard $(EXDIR)/*.c))
 
 CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11
 SANIFLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
 LIBS := -lm
 CC := clang
 
-.PHONY = test
+.PHONY = example test bench
 .DEFAULT_GOAL = test
 
 ifndef ECHO
@@ -47,9 +49,20 @@ $(benchs): %: %.c $(SRCDIR)/la.a
 	@$(ECHO) $@
 	$(CC) $< $(SRCDIR)/la.a -o $@ $(CFLAGS) $(LIBS) -I$(SRCDIR)
 
+$(examples): %: %.c $(SRCDIR)/la.a
+	@$(ECHO) $@
+	$(CC) $< $(SRCDIR)/la.a -o $@ $(CFLAGS) $(LIBS) -I$(SRCDIR)
+
 test: $(tests)
 
+runtest: test
+	./run_tests.sh $(TESTDIR)
+
+example: $(examples)
+
 bench: $(benchs)
+
+all: bench example test
 
 coverage: clean test
 	./coverage.sh
@@ -59,4 +72,5 @@ clean:
 	rm -vf $(SRCDIR)/*.a
 	rm -vf $(tests)
 	rm -vf $(benchs)
+	rm -vf $(examples)
 	rm -vfr coverage
