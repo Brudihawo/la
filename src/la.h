@@ -16,7 +16,7 @@ RowPerm RP_new(long rows);
 
 void RP_add(RowPerm *perms, long i, long j);
 
-#define RP_FREE(perms) free(perms.order)
+void RP_free(RowPerm *perms);
 
 bool almost_eq(float a, float b);
 

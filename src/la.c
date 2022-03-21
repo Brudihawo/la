@@ -31,3 +31,7 @@ void RP_add(RowPerm *perms, long i, long j) {
   perms->n_swaps++;
 }
 
+void RP_free(RowPerm *perms) {
+  free(perms->order);
+}
+
