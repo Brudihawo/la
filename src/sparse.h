@@ -41,6 +41,12 @@ SMatF SM_empty(long rows, long cols, long n_vals);
  */
 SMatF SM_empty_like(SMatF A);
 
+/* @brief Create a clone of A
+ *
+ * @param A SMatF to clone
+ */
+SMatF SM_clone(SMatF A);
+
 /* @brief Create empty SMatF from ordered list of non-zero positions
  *
  * @param n_rows number of rows

@@ -83,6 +83,15 @@ SMatF SM_empty_like(SMatF A) {
   return ret;
 }
 
+SMatF SM_clone(SMatF A) {
+  SMatF ret = SM_empty_like(A);
+
+  // copy values from A
+  memcpy(ret.vals, A.vals, A.nvals * sizeof(float));
+
+  return ret;
+}
+
 /* @brief initialize row / column start arrays after row / column sizes have
  *        been initialized. For internal use only. This is not in the header
  */
