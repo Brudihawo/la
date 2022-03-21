@@ -10,7 +10,7 @@ Provides Matrix, Vector Multiplication etc. This is a work in progress.
 - [ ] SMatF Iterative Methods for linear systems of equations
 - [x] Benchmark SMatF vs MatF product
 - [ ] valgrind for profiling
-- [ ] SMatF check for nvals < rows * cols
+- [x] SMatF check for nvals < rows * cols
 - [ ] Build System improvement with debug and release targets
 
 ## In-File-TODOs:

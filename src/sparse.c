@@ -7,8 +7,18 @@
 #include "stdlib.h"
 
 #include "la.h"
+#include <math.h>
+
+#define check_size(rows, cols, n_vals)                                         \
+  if (n_vals > rows * cols) {                                                  \
+    log_err("%s:%i Number of values in SMatF (nvals = %ld) cannot exceed "     \
+            "rows * columns (%ld * %ld = %ld).",                               \
+            __FILE__, __LINE__, n_vals, rows, cols, rows *cols);               \
+    exit(EXIT_FAILURE);                                                        \
+  }
 
 SMatF SM_empty(long rows, long cols, long n_vals) {
+  check_size(rows, cols, n_vals);
   return (SMatF){
       .nrows = rows,
       .ncols = cols,
@@ -82,6 +92,7 @@ void SM_init_start_arrs(SMatF A) {
 
 SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos) {
+  check_size(n_rows, n_cols, n_vals);
   SMatF ret = {
       .nrows = n_rows,
       .ncols = n_cols,
@@ -129,11 +140,7 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
 
 SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
                        long *col_pos, float *vals) {
-  if (n_vals >= n_rows * n_cols) {
-    log_err("SMatF number of values (%ld) cannot exceed the size of the Matrix "
-            "(%ld x %ld = %ld).", n_vals, n_rows, n_cols, n_rows * n_cols);
-    exit(EXIT_FAILURE);
-  }
+  check_size(n_rows, n_cols, n_vals);
 
   SMatF ret = {
       .nrows = n_rows,
