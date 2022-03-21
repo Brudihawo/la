@@ -103,6 +103,12 @@ SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size);
  */
 SMatF SM_vec_empty(long rows);
 
+/* @brief compute square root of sum of squared elements in A
+ *        This is not a standard Matrix norm!
+ *        Use this to compute the absolute value of a vector as SMatF
+ */
+float SM_abs(SMatF A);
+
 /* @brief determine whether a position in SMatF can be non-zero
  *
  * @param A SMatF to test

@@ -49,6 +49,14 @@ SMatF SM_vec_empty(long rows) {
   return ret;
 }
 
+float SM_abs(SMatF A) {
+  float acc = 0.0f;
+  for (long i = 0; i < A.nvals; ++i) {
+    acc += A.vals[i] * A.vals[i];
+  }
+  return sqrtf(acc);
+}
+
 SMatF SM_empty_like(SMatF A) {
   SMatF ret = {
       .nrows = A.nrows,
