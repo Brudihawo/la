@@ -491,30 +491,6 @@ void SM_scl(SMatF A, float s, SMatF target) {
   }
 }
 
-void SM_prod(SMatF A, SMatF B, SMatF target) {
-  // size assertions
-  assert(A.ncols == B.nrows && "Size mismatch between A and B");
-  assert(target.nrows == A.nrows && "target.nrows == A.nrows");
-  assert(target.ncols == B.ncols && "target.ncols == B.ncols");
-
-  for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
-    for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
-         t_col_i++) { // values in row of target (present columns' indices)
-      long t_col = SM_col_or_panic(target, t_row, t_col_i); // column in target
-      SM_set_or_panic(target, t_row, t_col, 0.0f);
-
-      for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
-        long idx = SM_col_or_panic(A, t_row, a_col_i); // column in a
-
-        if (SM_has_loc(B, idx, t_col)) { // check if value is non-zero in b
-          *SM_ptr_or_panic(target, t_row, t_col) +=
-              SM_at(A, t_row, idx) * SM_at(B, idx, t_col);
-        }
-      }
-    }
-  }
-}
-
 SMatF SM_prod_prepare(SMatF A, SMatF B) {
   assert((A.ncols == B.nrows) && "Size mismatch, needs a.cols == b.rows.");
 
@@ -600,6 +576,51 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
   return ret;
 }
+
+void SM_prod(SMatF A, SMatF B, SMatF target) {
+  // size assertions
+  assert(A.ncols == B.nrows && "Size mismatch between A and B");
+  assert(target.nrows == A.nrows && "target.nrows == A.nrows");
+  assert(target.ncols == B.ncols && "target.ncols == B.ncols");
+
+  for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
+    for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
+         t_col_i++) { // values in row of target (present columns' indices)
+      long t_col = SM_col_or_panic(target, t_row, t_col_i); // column in target
+      SM_set_or_panic(target, t_row, t_col, 0.0f);
+
+      for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
+        long idx = SM_col_or_panic(A, t_row, a_col_i); // column in a
+
+        if (SM_has_loc(B, idx, t_col)) { // check if value is non-zero in b
+          *SM_ptr_or_panic(target, t_row, t_col) +=
+              SM_at(A, t_row, idx) * SM_at(B, idx, t_col);
+        }
+      }
+    }
+  }
+}
+
+void SM_jacobi(SMatF A, SMatF b, SMatF target, float rel_err_max, long n_iter) {
+  // random initialisation of target
+  for (long i = 0; i < target.nvals; ++i) {
+    target.vals[i] = (float)rand() / (float)RAND_MAX;
+  }
+
+  SMatF cur_result = SM_prod_prepare(A, b);
+  SMatF err = SM_empty_like(cur_result);
+
+  for (long i = 0; i < n_iter; ++i) {
+    SM_prod(A, target, cur_result);
+    SM_sub(b, cur_result, err);
+
+    if (rel_err < rel_err_max)
+      break;
+  }
+}
+
+void SM_gauss_seidel_or(SMatF A, SMatF b, SMatF target, float or, float rel_err,
+                        long n_iter);
 
 void SM_print(SMatF A) {
   printf("[");
