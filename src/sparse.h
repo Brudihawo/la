@@ -32,8 +32,8 @@ typedef struct {
  */
 SMatF SM_empty(long rows, long cols, long n_vals);
 
-/* @brief Create empty sparse matrix by copying size and non-zero structure from other.
- *        Does not set actual values.
+/* @brief Create empty sparse matrix by copying size and non-zero structure from
+ * other. Does not set actual values.
  *
  * @param A SMatF to copy structure from
  *
@@ -64,33 +64,36 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
  * @param vals values of positions (value array is set to this at the moment)
  *
  * @return SMatF with corresponding non-zero structure and set values
- */SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals,
-                       long *row_pos, long *col_pos, float *vals);
+ */
+SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
+                       long *col_pos, float *vals);
 
 /* @brief create empty sparse matrix with diagonal non-zero elements.
  *
  * @param diags diagonals which can be non-zero.
  *        Main diagonal is denoted by zero.
- *        Diagonals below are denoted by negative sign, ones above by positive sign.
+ *        Diagonals below are denoted by negative sign, ones above by positive
+ * sign.
  * @param n_diags number of diagonals to populate
  * @param size size of matrix (square)
  *
  * @return Diagonal Matrix with no values set (uninitialized memory)
  */
-SMatF SM_empty_diag(long* diags, long n_diags, long size);
+SMatF SM_empty_diag(long *diags, long n_diags, long size);
 
 /* @brief Create regular sparse matrix with diagonal non-zero elements
  *        and set each diagonal to a value.
  *
  * @param diags diagonals which can be non-zero.
  *        Main diagonal is denoted by zero.
- *        Diagonals below are denoted by negative sign, ones above by positive sign.
+ *        Diagonals below are denoted by negative sign, ones above by positive
+ * sign.
  * @param n_diags number of diagonals to populate
  * @param size size of matrix (square)
  *
  * @return Diagonal Matrix with values set to values specified in diag_vals
  */
-SMatF SM_diag_regular(long *diags, float* diag_vals, long n_diags, long size);
+SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size);
 
 /* @brief Create an empty SMatF vector
  *
@@ -158,7 +161,8 @@ long SM_col(SMatF A, long row, long col_idx);
  */
 long SM_col_or_panic(SMatF A, long row, long col_idx);
 
-/* @brief Set value in SMatF. Crash on trying to set non-zero or out of bounds value
+/* @brief Set value in SMatF. Crash on trying to set non-zero or out of bounds
+ * value
  *
  * @param A SMatF to modify
  * @param row row to set
@@ -172,7 +176,7 @@ void SM_set_or_panic(SMatF A, long row, long col, float val);
  * @param A SMatF to query
  * @param row row
  * @param col column
- * 
+ *
  * @return value at position in SMatF
  */
 float SM_at(SMatF A, long row, long col);
@@ -190,8 +194,8 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B);
  *
  * @param A summand A
  * @param B summand B
- * @param target location to save to (can only be A or B if A and B have the same
- *        non-zero structure.)
+ * @param target location to save to (can only be A or B if A and B have the
+ * same non-zero structure.)
  */
 void SM_add(SMatF A, SMatF B, SMatF target);
 
@@ -199,8 +203,8 @@ void SM_add(SMatF A, SMatF B, SMatF target);
  *
  * @param A SMatF to subtract from
  * @param B SMatF to subtract
- * @param target location to save to (can only be A or B if A and B have the same
- *        non-zero structure.)
+ * @param target location to save to (can only be A or B if A and B have the
+ * same non-zero structure.)
  */
 void SM_sub(SMatF A, SMatF B, SMatF target);
 
