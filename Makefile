@@ -1,50 +1,62 @@
-CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -g
-TEST_FLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
-LIBS := -lm
-CC := clang
-
 SRCDIR := ./src
 TESTDIR := ./test
 
+objs := $(patsubst %.c, %.o, $(wildcard $(SRCDIR)/*.c))
+benchs := $(patsubst %.c, %, $(wildcard $(TESTDIR)/bench_*.c))
+tests := $(patsubst %.c,%,$(wildcard $(TESTDIR)/test_*.c))
+
+CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11
+SANIFLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
+LIBS := -lm
+CC := clang
+
+.PHONY = test
 .DEFAULT_GOAL = test
 
-log:
-	$(CC) $(SRCDIR)/log.c -c -o $(SRCDIR)/log.o $(CFLAGS)
+ifndef ECHO
+	HIT_TOTAL != ${MAKE} ${MAKECMDGOALS} --dry-run ECHO="HIT_MARK" | grep -c "HIT_MARK"
+	HIT_COUNT = $(eval HIT_N != expr ${HIT_N} + 1) ${HIT_N}
 
-la:
-	$(CC) $(SRCDIR)/la.c -c -o $(SRCDIR)/la.o $(CFLAGS)
+	ECHO = echo -e "\033[1;32m[`expr ${HIT_COUNT} '*' 100 / ${HIT_TOTAL}`%]\033[0m"
+endif
 
-matf:
-	$(CC) $(SRCDIR)/matf.c -c -o $(SRCDIR)/matf.o $(CFLAGS)
+ifeq ("$(DEBUG)", "true")
+  CFLAGS += -g -Og
+else
+  CFLAGS += -O2
+endif
 
-sparse:
-	$(CC) $(SRCDIR)/sparse.c -c -o $(SRCDIR)/sparse.o $(CFLAGS) $(TEST_FLAGS)
+ifeq ("$(SANITIZE)", "true")
+  CFLAGS += $(SANIFLAGS)
+endif
 
-la_lib: la matf sparse log
+
+$(objs): %.o: %.c
+	@$(ECHO) $@
+	$(CC) $(CFLAGS) $< -c -o $@
+
+$(SRCDIR)/la.a: $(objs)
+	@$(ECHO) $@
 	ar rcs $(SRCDIR)/la.a $(SRCDIR)/*.o
 
-test_solv: la_lib
-	$(CC) $(TESTDIR)/test_solv.c $(SRCDIR)/la.a -o $(TESTDIR)/test_solv \
-		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src
+$(tests): %: %.c $(SRCDIR)/la.a
+	@$(ECHO) $@
+	$(CC) $< $(SRCDIR)/la.a -o $@ $(CFLAGS) $(LIBS) -I$(SRCDIR)
 
-test_sparse: la_lib
-	$(CC) $(TESTDIR)/test_sparse.c $(SRCDIR)/la.a -o $(TESTDIR)/test_sparse \
-		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src
+$(benchs): %: %.c $(SRCDIR)/la.a
+	@$(ECHO) $@
+	$(CC) $< $(SRCDIR)/la.a -o $@ $(CFLAGS) $(LIBS) -I$(SRCDIR)
 
-benchmark: la_lib
-	$(CC) $(TESTDIR)/bench_multiplication.c $(SRCDIR)/la.a \
-		-o $(TESTDIR)/bench_multiplication \
-		$(CFLAGS) $(TEST_FLAGS) $(LIBS) -I./src -O3
+test: $(tests)
 
-test: test_solv test_sparse benchmark
+bench: $(benchs)
 
 coverage: clean test
 	./coverage.sh
 
 clean:
-	rm -vf $(SRCDIR)*.o
-	rm -vf $(SRCDIR)*.a
-	rm -vf $(TESTDIR)/test_solv
-	rm -vf $(TESTDIR)/test_sparse
-	rm -vf $(TESTDIR)/benchmark_multiplication
+	rm -vf $(SRCDIR)/*.o
+	rm -vf $(SRCDIR)/*.a
+	rm -vf $(tests)
+	rm -vf $(benchs)
 	rm -vfr coverage

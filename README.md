@@ -2,6 +2,24 @@
 
 Provides Matrix, Vector Multiplication etc. This is a work in progress.
 
+# Building
+
+## Quickstart
+
+How to get started and run the tests:
+```shell
+$ git clone https://github.com/brudihawo/la
+$ cd la
+$ make
+```
+
+## Debug / Sanitizing
+To turn on debug mode / activate sanitizing flags:
+
+```shell
+$ make DEBUG=true SANITIZE=true
+```
+
 # TODO
 
 - [ ] SMatF Initialisation functions
