@@ -7,8 +7,8 @@ benchs := $(patsubst %.c, %, $(wildcard $(TESTDIR)/bench_*.c))
 tests := $(patsubst %.c,%,$(wildcard $(TESTDIR)/test_*.c))
 examples := $(patsubst %.c,%,$(wildcard $(EXDIR)/*.c))
 
-CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11
-SANIFLAGS := -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=bounds
+CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -flto -fvisibility=hidden
+SANIFLAGS := -fsanitize=address,leak,undefined,bounds,cfi
 LIBS := -lm
 CC := clang
 
