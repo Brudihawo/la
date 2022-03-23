@@ -391,7 +391,12 @@ float SM_at(SMatF A, long row, long col) {
 }
 
 long SM_col(SMatF A, long row, long col_idx) {
-  assert(row < A.nrows && col_idx < A.ncols && "Position out of bounds");
+  if (row >= A.nrows || col_idx >= A.ncols) {
+    log_err("Row and column index (%ld, %ld) out of bounds "
+            "for matrix of size %ld x %ld",
+            row, col_idx, A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
 
   if (SM_ROW_EMPTY(A, row) || col_idx >= A.row_sizes[row])
     return SM_NOT_PRESENT;
@@ -603,11 +608,11 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
     for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
          t_col_i++) { // values in row of target (present columns' indices)
-      long t_col = SM_col_or_panic(target, t_row, t_col_i); // column in target
+      const long t_col = SM_col_or_panic(target, t_row, t_col_i); // column in target
       SM_set_or_panic(target, t_row, t_col, 0.0f);
 
       for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
-        long idx = SM_col_or_panic(A, t_row, a_col_i); // column in a
+        const long idx = SM_col_or_panic(A, t_row, a_col_i); // column in a
 
         if (SM_has_loc(B, idx, t_col)) { // check if value is non-zero in b
           *SM_ptr_or_panic(target, t_row, t_col) +=
