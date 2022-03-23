@@ -116,18 +116,18 @@ void test_random_pos_dif_sizes_prod_ver_matf() {
   MF_prod(m_A, m_B, m_T);
 
   bool fail = false;
-  for (long row = 0; row < m_T.rows; ++row) {
-    for (long col = 0; col < m_T.cols; ++col) {
+  for (long row = 0; row < m_T.rows && !fail; ++row) {
+    for (long col = 0; col < m_T.cols && !fail; ++col) {
       if (SM_at(s_T, row, col) != MF_AT(m_T, row, col)) {
         TEST_FAIL_MSG("Matrix multiplication verified with MatF",
                       "Mismatch at (%ld, %ld)", row, col);
         fail = true;
-        break;
       }
     }
   }
 
-  if (!fail) TEST_PASS("Matrix multiplication verified with MatF");
+  if (!fail)
+    TEST_PASS("Matrix multiplication verified with MatF");
 
   SM_free(s_A);
   SM_free(s_B);
@@ -228,8 +228,9 @@ void test_add_sub_random() {
   SMatF target = SM_addsub_prepare(A, B);
   SM_add(A, B, target);
 
-  for (long row = 0; row < SIZE; ++row) {
-    for (long col = 0; col < SIZE; ++col) {
+  bool fail = false;
+  for (long row = 0; row < SIZE && !fail; ++row) {
+    for (long col = 0; col < SIZE && !fail; ++col) {
       float t = SM_at(target, row, col);
       float a = SM_at(A, row, col);
       float b = SM_at(B, row, col);
@@ -237,16 +238,19 @@ void test_add_sub_random() {
       if (t != a + b) {
         TEST_FAIL_MSG("Matrix Addition", "Failed at (%ld, %ld) (%f + %f != %f)",
                       row, col, a, b, t);
-        break;
+        fail = true;
       }
     }
   }
-  TEST_PASS("Matrix Addition");
+
+  if (!fail)
+    TEST_PASS("Matrix Addition");
 
   SM_sub(A, B, target);
 
-  for (long row = 0; row < SIZE; ++row) {
-    for (long col = 0; col < SIZE; ++col) {
+  fail = false;
+  for (long row = 0; row < SIZE && !fail; ++row) {
+    for (long col = 0; col < SIZE && !fail; ++col) {
       float t = SM_at(target, row, col);
       float a = SM_at(A, row, col);
       float b = SM_at(B, row, col);
@@ -255,34 +259,88 @@ void test_add_sub_random() {
         TEST_FAIL_MSG("Matrix Subtraction",
                       "Failed at (%ld, %ld) (%f - %f != %f)", row, col, a, b,
                       t);
-        break;
+        fail = true;
       }
     }
   }
-  TEST_PASS("Matrix Subtraction");
+
+  if (!fail)
+    TEST_PASS("Matrix Subtraction");
 
   float scale_fac = rand_float() * 10.0f;
   SMatF target2 = SM_empty_like(A);
   SM_scl(A, scale_fac, target2);
 
-  for (long row = 0; row < SIZE; ++row) {
-    for (long col = 0; col < SIZE; ++col) {
+  fail = false;
+  for (long row = 0; row < SIZE && !fail; ++row) {
+    for (long col = 0; col < SIZE && !fail; ++col) {
       float t = SM_at(target2, row, col);
       float a = SM_at(A, row, col);
 
       if (t != a * scale_fac) {
         TEST_FAIL_MSG("Matrix Scaling", "Failed at (%ld, %ld) (%f * %f != %f)",
                       row, col, a, scale_fac, t);
-        break;
+        fail = true;
       }
     }
   }
-  TEST_PASS("Matrix Scaling");
+  if (!fail)
+    TEST_PASS("Matrix Scaling");
 
   SM_free(A);
   SM_free(B);
   SM_free(target);
   SM_free(target2);
+}
+
+void test_transpose() {
+  float *values = malloc(N_VALS * sizeof(float));
+  long *row_pos = malloc(N_VALS * sizeof(long));
+  long *col_pos = malloc(N_VALS * sizeof(long));
+  long a_rows = SIZE;
+  long a_cols = SIZE + 5;
+
+  gen_randoms(row_pos, col_pos, values, N_VALS, a_rows, a_cols);
+  SMatF A = SM_from_pos_with(a_rows, a_cols, N_VALS, row_pos, col_pos, values);
+
+  SMatF T = SM_transpose(A);
+
+  bool fail = false;
+  for (long i = 0; i < A.nrows && !fail; ++i) {
+    for (long j = 0; j < A.ncols && !fail; ++j) {
+      const float a = SM_at(A, i, j);
+      const float t = SM_at(T, j, i);
+      if (a != t) {
+        fail = true;
+        TEST_FAIL_MSG(
+            "Matrix Transposition",
+            "Value at (%ld, %ld) in A does not equal value at (%ld, %ld) "
+            "in T (%.2f != %.2f)",
+            i, j, j, i, a, t);
+      }
+    }
+  }
+
+  if (!fail)
+    TEST_PASS_MSG("Matrix Transposition", "Value Equality passed%s", "");
+
+  SMatF TT = SM_transpose(T);
+
+  fail = !SM_eq(A, TT) || fail;
+
+  if (!fail) {
+    TEST_PASS("Matrix Transposition");
+  } else {
+    TEST_FAIL_MSG("Matrix Transposition",
+                  "Double does not equal original Matrix %s", "");
+  }
+
+  SM_free(A);
+  SM_free(T);
+  SM_free(TT);
+  free(values);
+  free(row_pos);
+  free(col_pos);
 }
 
 int main(void) {
@@ -293,5 +351,6 @@ int main(void) {
   test_random_pos_dif_sizes_prod_ver_matf();
   test_random_pos_prod();
   test_add_sub_random();
+  test_transpose();
   return EXIT_SUCCESS;
 }

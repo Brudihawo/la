@@ -20,4 +20,8 @@ float rand_float() { return (float)rand() / (float)RAND_MAX; }
   fprintf(stdout, RED "FAILED:"RST" %s in %s\n  %s:%i\n  " msg "\n",\
       name, __func__, __FILE__, __LINE__, __VA_ARGS__)
 
+#define TEST_PASS_MSG(name, msg, ...) \
+  fprintf(stdout, GRN "PASSED:"RST" %s in %s\n  %s:%i\n  " msg "\n",\
+      name, __func__, __FILE__, __LINE__, __VA_ARGS__)
+
 #define TEST(name, cond) cond; cond ? TEST_PASS(name) : TEST_FAIL(name);
