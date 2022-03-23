@@ -255,6 +255,15 @@ SMatF SM_prod_prepare(SMatF A, SMatF B);
  */
 void SM_prod(SMatF A, SMatF B, SMatF target);
 
+/* @brief Scalar Product of A and B (sum of products of elements)
+ *
+ * @param a first operand
+ * @param b second operand
+ *
+ * @return scalar product of a and b
+ */
+float SM_scalar(SMatF A, SMatF B);
+
 /* @brief Print contents of A
  *
  * @param A SMatF to print

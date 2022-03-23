@@ -343,6 +343,27 @@ void test_transpose() {
   free(col_pos);
 }
 
+void test_scalar_prod_self() {
+  SMatF vec = SM_vec_empty(SIZE);
+  for (long i = 0; i < vec.nvals; ++i) {
+    vec.vals[i] = rand_float();
+  }
+
+  float abs2 = SM_scalar(vec, vec);
+
+  float tst = 0;
+  for (long i = 0; i < vec.nvals; ++i) {
+    tst += vec.vals[i] * vec.vals[i];
+  }
+
+  if (tst != abs2)
+    TEST_FAIL("Scalar Product");
+  else
+    TEST_PASS("Scalar Product");
+
+  SM_free(vec);
+}
+
 int main(void) {
   srand(69);
   test_structure_equality_self();
@@ -352,5 +373,6 @@ int main(void) {
   test_random_pos_prod();
   test_add_sub_random();
   test_transpose();
+  test_scalar_prod_self();
   return EXIT_SUCCESS;
 }

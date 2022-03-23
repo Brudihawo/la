@@ -592,6 +592,29 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   }
 }
 
+float SM_scalar(SMatF A, SMatF B) {
+  if (A.nrows != B.nrows || A.ncols != B.ncols) {
+    log_err("For scalar product, A and B need to have the same dimensions. "
+            "A: (%ld x %ld), B: (%ld x %ld)",
+            A.nrows, A.ncols, B.nrows, B.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  float ret = 0;
+  for (long row = 0; row < A.nrows; row++) {
+    for (long col_idx = 0; col_idx < A.row_sizes[row];
+         col_idx++) { // iterate on row, column in A
+      // Test position existance in B
+      const long col = SM_col_or_panic(A, row, col_idx);
+      if (SM_has_loc(B, row, col)) {
+          ret += SM_at(A, row, col) * SM_at(B, row, col);
+      }
+    }
+  }
+
+  return ret;
+}
+
 SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
                 float stale_bound) {
   if (A.nrows != A.ncols) {
