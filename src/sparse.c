@@ -368,7 +368,7 @@ bool SM_eq(SMatF A, SMatF B) {
 
 // TODO: do i want a non-panicking setter?
 void SM_set_or_panic(SMatF A, long row, long col, float val) {
-  long idx = SM_idx(A, row, col);
+  const long idx = SM_idx(A, row, col);
   assert(idx != SM_NOT_PRESENT &&
          "Can only assign to non-zero type position in SMatF");
 
