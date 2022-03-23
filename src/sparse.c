@@ -107,12 +107,12 @@ void SM_init_start_arrs(SMatF A) {
   }
 }
 
-/* @brief initialize col_idcs after col_sizes, row_sizes, row_starts, col_starts have
- * been initialized
+/* @brief initialize col_idcs after col_sizes, row_sizes, row_starts, col_starts
+ * have been initialized
  */
 void SM_init_col_idcs(SMatF A) {
   long cur_val_idx = 0;
-  for (long col = 0; col < A.ncols; ++col) { // iterate over columns first
+  for (long col = 0; col < A.ncols; ++col) {   // iterate over columns first
     for (long row = 0; row < A.nrows; ++row) { // then rows
       if (SM_has_loc(A, row, col)) {
         A.col_idcs[cur_val_idx] = SM_idx(A, row, col);
@@ -577,7 +577,8 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
     for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
          t_col_i++) { // values in row of target (present columns' indices)
-      const long t_col = SM_col_or_panic(target, t_row, t_col_i); // column in target
+      const long t_col =
+          SM_col_or_panic(target, t_row, t_col_i); // column in target
       SM_set_or_panic(target, t_row, t_col, 0.0f);
 
       for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
@@ -678,7 +679,7 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
 SMatF SM_transpose(SMatF A) {
   SMatF ret = SM_empty_like(A);
 
-  long* tmp_ptr;
+  long *tmp_ptr;
   tmp_ptr = ret.col_sizes;
   ret.col_sizes = ret.row_sizes;
   ret.row_sizes = tmp_ptr;
