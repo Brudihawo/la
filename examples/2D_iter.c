@@ -39,7 +39,7 @@ int main(void) {
   const float c_1 = ALPHA / (DELTA_X * DELTA_X) - V_X / (2.0f * DELTA_X);
   const float c_2 = ALPHA / (DELTA_Y * DELTA_Y) - V_Y / (2.0f * DELTA_Y);
 
-  SMatF mat = SM_diag_empty((long[5]){-FIELD_SIZE, -1, 0, 1, FIELD_SIZE}, 5,
+  SMatF mat = SM_empty_diag((long[5]){-FIELD_SIZE, -1, 0, 1, FIELD_SIZE}, 5,
                             FIELD_SIZE * FIELD_SIZE);
 
   SMatF field = SM_vec_empty(FIELD_SIZE * FIELD_SIZE);
