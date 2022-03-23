@@ -23,7 +23,7 @@ ifndef ECHO
 endif
 
 ifeq ("$(DEBUG)", "true")
-  CFLAGS += -g -Og
+  CFLAGS += -g -O0
 else
   CFLAGS += -O2
 endif
