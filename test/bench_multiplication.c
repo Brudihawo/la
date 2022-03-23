@@ -1,9 +1,9 @@
 #include "matf.h"
-#include "sparse.h"
-#include "stdlib.h"
 #include "math.h"
-#include "time.h"
+#include "sparse.h"
 #include "stdio.h"
+#include "stdlib.h"
+#include "time.h"
 
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
 
@@ -59,7 +59,6 @@ void matrix_product_time(long size, long nvals) {
     *MF_PTR(m_B, row_pos_B[i], col_pos_B[i]) = values_B[i];
   }
 
-
   clock_t m_start = clock();
 
   MatF m_T = MF_EMPTY_LIKE(m_A);
@@ -67,15 +66,12 @@ void matrix_product_time(long size, long nvals) {
 
   clock_t m_end = clock();
 
-  double m_time = (double) (m_end - m_start) / CLOCKS_PER_SEC;
+  double m_time = (double)(m_end - m_start) / CLOCKS_PER_SEC;
 
-
-  MF_FREE(m_A);
-  MF_FREE(m_B);
-  MF_FREE(m_T);
-
-  SMatF s_A = SM_from_pos_with(size, size, nvals, row_pos_A, row_pos_A, values_A);
-  SMatF s_B = SM_from_pos_with(size, size, nvals, row_pos_B, row_pos_B, values_B);
+  SMatF s_A =
+      SM_from_pos_with(size, size, nvals, row_pos_A, row_pos_A, values_A);
+  SMatF s_B =
+      SM_from_pos_with(size, size, nvals, row_pos_B, row_pos_B, values_B);
 
   clock_t s_start = clock();
 
@@ -83,13 +79,26 @@ void matrix_product_time(long size, long nvals) {
   SM_prod(s_A, s_B, s_T);
 
   clock_t s_end = clock();
-  double s_time = (double) (s_end - s_start) / CLOCKS_PER_SEC;
+  double s_time = (double)(s_end - s_start) / CLOCKS_PER_SEC;
 
-  printf("%5ld %13.8fs %13.8fs\n", size, m_time, s_time);
+  for (long row = 0; row < m_T.rows; ++row) {
+    for (long col = 0; col < m_T.cols; ++col) {
+      if (MF_AT(m_T, row, col) != SM_at(s_T, row, col)) {
+        printf("Incorrect product\n");
+        break;
+      }
+    }
+  }
+
+  fprintf(stderr, "%5ld %13.8f %13.8f %13.8f\n", size, m_time, s_time, s_time / m_time);
 
   SM_free(s_A);
   SM_free(s_B);
   SM_free(s_T);
+
+  MF_FREE(m_A);
+  MF_FREE(m_B);
+  MF_FREE(m_T);
 
   free(values_A);
   free(values_B);
@@ -101,9 +110,9 @@ void matrix_product_time(long size, long nvals) {
 
 int main(void) {
   srand(69);
-  printf("# SIZE   MatF           SMatF\n");
-  for (int order = 2; order < 5; ++order) {
-    const long size = (long)pow(4, order);
+  fprintf(stderr, "# SIZE   MatF/s        SMatF/s       SMatF / MatF\n");
+  for (int order = 4; order < 13; ++order) {
+    const long size = (long)pow(2, order);
     const long nvals = size * 5;
 
     matrix_product_time(size, nvals);
