@@ -229,6 +229,13 @@ void SM_sub(SMatF A, SMatF B, SMatF target);
  */
 void SM_scl(SMatF A, float s, SMatF target);
 
+/* @brief Transpose A
+ *
+ * @param A SMatF to transpose
+ * @return Transposed version of A
+ */
+SMatF SM_transpose(SMatF A);
+
 /* @brief prepare target for matrix product of A and B
  *
  * @param A left factor of matrix product

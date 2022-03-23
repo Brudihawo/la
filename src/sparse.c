@@ -655,25 +655,34 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
 SMatF SM_transpose(SMatF A) {
   SMatF ret = SM_empty_like(A);
 
-  long* tmp_sizes;
-  tmp_sizes = ret.col_sizes;
+  long* tmp_ptr;
+  tmp_ptr = ret.col_sizes;
   ret.col_sizes = ret.row_sizes;
-  ret.row_sizes = tmp_sizes;
+  ret.row_sizes = tmp_ptr;
 
-  for (long row = 0; row < A.nrows; ++row) {
-    for (long col_idx = 0; col_idx < A.col_sizes[row]; ++col_idx) {
-      long col = SM_col_or_panic(A, row, col_idx);
+  tmp_ptr = ret.col_starts;
+  ret.col_starts = ret.row_starts;
+  ret.row_starts = tmp_ptr;
 
-      SM_set_or_panic(ret, col, row, SM_at(A, row, col));
+  ret.ncols = A.nrows;
+  ret.nrows = A.ncols;
+  ret.nvals = A.nvals;
+
+  long count = 0;
+  for (long col = 0; col < A.ncols; ++col) {
+    for (long row = 0; row < A.nrows; ++row) {
+      if (SM_has_loc(A, row, col)) {
+        ret.col_pos[count] = row;
+        ++count;
+      }
     }
   }
 
   SM_init_start_arrs(ret);
+  SM_init_col_idcs(ret);
 
-  for (long row = 0; row < ret.nrows; ++row) {
-    for (long col_idx = 0; col_idx < ret.col_sizes[row]; ++col_idx) {
-      long col = SM_col_or_panic(ret, row, col_idx);
-    }
+  for (long i = 0; i < A.nvals; ++i) {
+    ret.vals[i] = A.vals[A.col_idcs[i]];
   }
 
   return ret;
