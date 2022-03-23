@@ -107,6 +107,21 @@ void SM_init_start_arrs(SMatF A) {
   }
 }
 
+/* @brief initialize col_idcs after col_sizes, row_sizes, row_starts, col_starts have
+ * been initialized
+ */
+void SM_init_col_idcs(SMatF A) {
+  long cur_val_idx = 0;
+  for (long col = 0; col < A.ncols; ++col) { // iterate over columns first
+    for (long row = 0; row < A.nrows; ++row) { // then rows
+      if (SM_has_loc(A, row, col)) {
+        A.col_idcs[cur_val_idx] = SM_idx(A, row, col);
+        ++cur_val_idx;
+      }
+    }
+  }
+}
+
 SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos) {
   check_size(n_rows, n_cols, n_vals);
@@ -209,15 +224,7 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
     last_idx = cur_idx;
   }
 
-  long idx = 0;
-  for (long col = 0; col < ret.ncols; ++col) {
-    for (long row = 0; row < ret.nrows; ++row) {
-      if (SM_has_loc(ret, row, col)) {
-        ret.col_idcs[idx] = SM_idx(ret, row, col);
-        ++idx;
-      }
-    }
-  }
+  SM_init_col_idcs(ret);
 
   return ret;
 }
@@ -268,22 +275,7 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
   // row / column starts
   SM_init_start_arrs(ret);
 
-  long count_col = 0;
-  for (long col = 0; col < size; ++col) {
-    for (long d = 0; d < n_diags; ++d) {
-      const long cur_diag = diags[d];
-      // check value present in column and diagonal
-      // rc_idx represents a column here
-      if (((cur_diag >= 0) && (col >= cur_diag)) ||      // diagonal above main
-          ((cur_diag < 0) && (col - cur_diag < size))) { // diagonal below
-        // set row-major index in column-major index array
-        // ret.col_idcs[row_col]
-        long cur_row = col - cur_diag;
-        ret.col_idcs[count_col] = SM_idx(ret, cur_row, col);
-        ++count_col;
-      }
-    }
-  }
+  SM_init_col_idcs(ret);
 
   return ret;
 }
@@ -457,15 +449,7 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
 
   SM_init_start_arrs(ret);
 
-  cur_val_idx = 0;
-  for (long row = 0; row < ret.nrows; ++row) {   // rows in target
-    for (long col = 0; col < ret.ncols; ++col) { // columns in target
-      if (SM_has_loc(ret, row, col)) {
-        ret.col_idcs[cur_val_idx] = SM_idx(ret, row, col);
-        ++cur_val_idx;
-      }
-    }
-  }
+  SM_init_col_idcs(ret);
 
   return ret;
 }
@@ -579,22 +563,7 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
   // TODO: Do i need column-wise iteration in SMatF?
   // Assignments for column-wise iteration
-
-  // set col_idcs
-  cur_idx = 0;
-  for (long t_col = 0; t_col < ret.ncols; t_col++) {
-    for (long t_row = 0; t_row < ret.nrows;
-         t_row++) { // iterate on column, row in target
-      for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
-        // Test idx in A and B for column / row respectively
-        if (SM_has_loc(ret, t_row, t_col)) {
-          ret.col_idcs[cur_idx] = SM_idx(ret, t_row, t_col);
-          cur_idx++;
-          break;
-        }
-      }
-    }
-  }
+  SM_init_col_idcs(ret);
 
   return ret;
 }
