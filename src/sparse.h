@@ -110,6 +110,10 @@ SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size);
  */
 SMatF SM_vec_empty(long rows);
 
+/* @brief compute sum of squared elements in A
+ */
+float SM_sse(SMatF A);
+
 /* @brief compute square root of sum of squared elements in A
  *        This is not a standard Matrix norm!
  *        Use this to compute the absolute value of a vector as SMatF
@@ -221,6 +225,17 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B);
  */
 void SM_add(SMatF A, SMatF B, SMatF target);
 
+/* @brief Elementwise Addition of A and B scaled with s_a and s_b respectively
+ *
+ * @param A summand A
+ * @param B summand B
+ * @param s_a scale for A
+ * @param s_b scale for B
+ * @param target location to save to (can only be A or B if A and B have the
+ * same non-zero structure.)
+ */
+void SM_add_scl(SMatF A, SMatF B, float s_a, float s_b, SMatF target);
+
 /* @brief Elementwise subtraction of B from A
  *
  * @param A SMatF to subtract from
@@ -237,6 +252,13 @@ void SM_sub(SMatF A, SMatF B, SMatF target);
  * @param target where to save results. Can be A
  */
 void SM_scl(SMatF A, float s, SMatF target);
+
+/* @brief Elementwise scaling of A by s
+ *
+ * @param A SMatF to Scale
+ * @param s Scaling factor
+ */
+void SM_scl_inplace(SMatF A, float s);
 
 /* @brief Transpose A
  *
@@ -263,6 +285,17 @@ SMatF SM_prod_prepare(SMatF A, SMatF B);
  * @return SMatF with expected structure to hold A*B
  */
 void SM_prod(SMatF A, SMatF B, SMatF target);
+
+/* @brief SMatF matrix multiplication with scaling of A and B
+ *
+ * @param A left factor of matrix product
+ * @param B right factor of matrix product
+ * @param s scale output
+ * @param target SMatF to write results into (create by SM_prod_prepare)
+ *
+ * @return SMatF with expected structure to hold A*B
+ */
+void SM_prod_scl(SMatF A, SMatF B, float s, SMatF target);
 
 /* @brief Scalar Product of A and B (sum of products of elements)
  *
