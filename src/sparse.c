@@ -366,6 +366,21 @@ bool SM_eq(SMatF A, SMatF B) {
   return true;
 }
 
+void SM_swap_vals(SMatF* A, SMatF* B) {
+  assert(A->nvals == B->nvals);
+  assert(A->nrows == B->nrows);
+  assert(A->ncols == B->ncols);
+
+  // swap pointers
+  float* tmp = A->vals;
+  A->vals = B->vals;
+  B->vals = tmp;
+
+  long* tmp_l = A->row_sizes;
+  A->row_sizes = B->row_sizes;
+  B->row_sizes = tmp_l;
+}
+
 // TODO: do i want a non-panicking setter?
 void SM_set_or_panic(SMatF A, long row, long col, float val) {
   const long idx = SM_idx(A, row, col);

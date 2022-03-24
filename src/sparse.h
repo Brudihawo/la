@@ -154,6 +154,15 @@ bool SM_structure_eq(SMatF A, SMatF B);
  */
 bool SM_eq(SMatF A, SMatF B);
 
+/* @brief Swap values in A and B. A and b should have same size and nonzero
+ * structure or this will produce undefined behaviour
+ *
+ * @param A
+ * @param B
+ *
+ */
+void SM_swap_vals(SMatF *A, SMatF *B);
+
 /* @brief Get column from column index and row
  *
  * @param A SMatF to query
