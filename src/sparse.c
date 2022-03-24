@@ -637,29 +637,34 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
   SMatF cur_result = SM_prod_prepare(A, b);
   SMatF err = SM_empty_like(b);
   float last_err = -1;
+  float abs_tol = SM_abs(b) * rel_tol;
 
   for (long iter = 0; iter < n_iter; ++iter) {
     SM_prod(A, u_k, cur_result);
     SM_sub(b, cur_result, err);
-    float rel_err = SM_abs(err) / SM_abs(b);
+    float abs_err = SM_abs(err);
 
-    if (rel_err < rel_err_max || rel_err / last_err > stale_bound) {
+    if (abs_err < abs_tol || abs_err / last_err > stale_bound) {
       break;
     } else {
       if (iter % 10 == 0)
-        log_msg("Iteration %ld: %f %f", iter, rel_err, rel_err / last_err);
+        log_msg("Iteration %ld: %f %f", iter, abs_err, abs_err / last_err);
 
-      last_err = rel_err;
+      last_err = abs_err;
       for (long i = 0; i < u_k.nvals; ++i) {
         u_k1.vals[i] = 0;
-        for (long j = 0; j < u_k.nvals; ++j) {
-          if (i == j)
-            continue;
+      }
 
-          if (SM_has_loc(A, i, j)) {
-            u_k1.vals[i] -= SM_at(A, i, j) * u_k.vals[j];
-          }
+      for (long row = 0; row < A.nrows; ++row) {
+        for (long col_idx = 0; col_idx < A.row_sizes[row]; ++col_idx) {
+          const long col = SM_col_or_panic(A, row, col_idx);
+          if (row == col)
+            continue;
+          u_k1.vals[row] -= SM_at(A, row, col) * u_k.vals[col];
         }
+      }
+
+      for (long i = 0; i < u_k.nvals; ++i) {
         u_k1.vals[i] += SM_at(b, i, 0);
         u_k1.vals[i] /= SM_at(A, i, i);
       }
@@ -668,7 +673,7 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
       u_k.vals = u_k1.vals;
       u_k1.vals = tmp;
     }
-  }
+  } 
 
   // TODO: [SM_jacobi] reduce allocations or move outside for repeated calling
   SM_free(cur_result);
