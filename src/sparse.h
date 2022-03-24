@@ -306,6 +306,15 @@ void SM_prod_scl(SMatF A, SMatF B, float s, SMatF target);
  */
 float SM_scalar(SMatF A, SMatF B);
 
+/* @brief compute energy norm scalar product x_T A x
+ *
+ * @param A symmetric positive definite Matrix
+ * @param x vector of dimensions A.nvals x 1
+ * @param tmp_p pointer to temporary SMatF storage or NULL (if null, allocate
+ * own memory)
+ */
+float SM_energy_norm(SMatF A, SMatF x, SMatF *tmp_p);
+
 /* @brief Print contents of A
  *
  * @param A SMatF to print
@@ -336,6 +345,17 @@ void SM_print_meta(SMatF A);
  */
 SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
                 float stale_bound);
+
+/* @brief Use conjugate gradient method to solv A * u = b
+ *
+ * @param A Coefficient matrix (required to be symmetric, positive definite)
+ * @param b solution vector (A.nrows x 1)
+ * @param reltol relative tolerance to solution
+ * @param n_iter maximum number of iterations
+ *
+ * @return solution u to A * u = b
+ */
+SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter);
 
 /* @brief Print shape of A
  *

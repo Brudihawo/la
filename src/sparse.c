@@ -789,8 +789,114 @@ SMatF SM_transpose(SMatF A) {
 void SM_gauss_seidel_or(SMatF A, SMatF b, SMatF target, float or, float rel_err,
                         long n_iter);
 
-// SMatF SM_conjugate_gradients(SMatF A, SMatF b, float rel_err) {
-// }
+float SM_energy_norm(SMatF A, SMatF x, SMatF *tmp_p) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only compute energy norm on A if A is spd. "
+            "A.nrows != A.ncols (%ld !=%ld)",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  if (x.nrows != A.nrows || x.ncols != 1) {
+    log_err("Size mismatch, x.nrows != A.ncols (%ld != %ld) or x.ncols != 1 "
+            "(%ld != 1).",
+            x.nrows, A.nrows, x.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  // initialisation of temporary storage if neccessary
+  SMatF tmp;
+  if (tmp_p == NULL) {
+    tmp = SM_empty_like(x);
+  } else {
+    tmp = *tmp_p;
+    assert(tmp.nrows == x.nrows && tmp.ncols == x.ncols);
+  }
+
+
+  for (long i = 0; i < tmp.nvals; ++i) {
+    tmp.vals[i] = 0.0f;
+  }
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_idx = 0; col_idx < A.row_sizes[row]; ++col_idx) {
+      const long col = SM_col_or_panic(A, row, col_idx);
+      tmp.vals[col] += SM_at(A, row, col) * SM_at(x, row, 0);
+    }
+  }
+
+  float ret = SM_scalar(tmp, x);
+
+  if (tmp_p == NULL)
+    SM_free(tmp);
+
+  return ret;
+}
+
+SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter) {
+  assert(A.nrows == A.ncols);
+  SMatF u_k = SM_empty_like(b);
+  SMatF u_k1 = SM_empty_like(b);
+  SMatF r_k = SM_empty_like(b);
+  SMatF r_k1 = SM_empty_like(b);
+
+  const float abs_tol = reltol * SM_abs(b);
+
+  // random initialisation of target
+  for (long i = 0; i < u_k.nvals; ++i) {
+    u_k.vals[i] = (float)rand() / (float)RAND_MAX;
+  }
+
+  SM_prod(A, u_k, r_k);
+  SM_sub(b, r_k, r_k1);
+  SM_swap_vals(&r_k, &r_k1);
+
+  SMatF d_k = SM_clone(r_k);
+  SMatF tmp = SM_clone(r_k);
+
+  // TODO: this diverges. Find out why
+  // TODO: [verify] conjugate gradient takes at most N iterations to compute
+  // solution
+  for (long i = 0; i < n_iter; ++i) {
+    // <r_k, r_k>
+    const float rk_sse = SM_sse(r_k);
+
+    if (sqrt(rk_sse) < abs_tol)
+      break;
+    if (i % 10 == 0)
+      log_msg("Iteration %ld / %ld: Error %f > %f", i, n_iter, sqrt(rk_sse), abs_tol);
+
+    // <r_k, r_k> / <d_k, d_k>_A
+    const float a_k = rk_sse / SM_energy_norm(A, d_k, &u_k1);
+
+    // done calculating u_k+1
+    // u_k1 -> u_k + tmp = u_k + a_k d_k
+    SM_add_scl(u_k, d_k, 1.0f, a_k, u_k1);
+
+    // tmp -> a_k A d_k
+    SM_prod_scl(A, d_k, a_k, tmp);
+
+    // r_k+1 -> r_k - tmp = r_k - a_k A d_k
+    SM_sub(r_k, tmp, r_k1);
+
+    // <r_k+1, r_k+1> / <r_k, r_k>
+    const float rk1_sse = SM_sse(r_k1);
+    const float b_k = rk1_sse / rk_sse;
+
+    SM_add_scl(d_k, r_k1, -b_k, 1.0f, d_k);
+
+    SM_swap_vals(&r_k1, &r_k);
+    SM_swap_vals(&u_k1, &u_k);
+
+  }
+
+  SM_free(u_k1);
+  SM_free(r_k);
+  SM_free(r_k1);
+  SM_free(tmp);
+  SM_free(d_k);
+  return u_k;
+}
 
 void SM_print(SMatF A) {
   printf("[");
