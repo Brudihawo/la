@@ -591,8 +591,7 @@ float SM_scalar(SMatF A, SMatF B) {
   return ret;
 }
 
-SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
-                float stale_bound) {
+SMatF SM_jacobi(SMatF A, SMatF b, float rel_tol, long n_iter) {
   if (A.nrows != A.ncols) {
     log_err("Can only perform the jacobi-method for matrix inversion on "
             "invertible matrices. Here, A.nrows != A.ncols (%ld != %ld).",
@@ -618,11 +617,11 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
     SM_sub(b, cur_result, err);
     float abs_err = SM_abs(err);
 
-    if (abs_err < abs_tol || abs_err / last_err > stale_bound) {
+    if (abs_err < abs_tol) {
       break;
     } else {
       if (iter % 10 == 0)
-        log_msg("Iteration %ld: %f %f", iter, abs_err, abs_err / last_err);
+        log_msg("Iteration %ld: %f > %f", iter, abs_err, abs_tol);
 
       last_err = abs_err;
       for (long i = 0; i < u_k.nvals; ++i) {
@@ -647,7 +646,7 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
       u_k.vals = u_k1.vals;
       u_k1.vals = tmp;
     }
-  } 
+  }
 
   // TODO: [SM_jacobi] reduce allocations or move outside for repeated calling
   SM_free(cur_result);

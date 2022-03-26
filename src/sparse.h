@@ -339,12 +339,10 @@ void SM_print_meta(SMatF A);
  * @param b solution vector (A.nrows x 1)
  * @param rel_err_max stop iteration at this relative error
  * @param n_iter stop after n_iter iterations
- * @param stale_bound stop if current_error / last_error < stale_bound
  *
  * @return solution u to A * u = b
  */
-SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
-                float stale_bound);
+SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter);
 
 /* @brief Use conjugate gradient method to solv A * u = b
  *
