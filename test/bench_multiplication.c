@@ -13,14 +13,15 @@ int comp_long(const void *a, const void *b) {
   return va > vb;
 }
 
-void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long size) {
+void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
+                 long n_cols) {
   long *idcs = malloc(n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
     bool repeat = true;
     while (repeat) {
       vals[i] = rand_float();
-      idcs[i] = rand() % (size * size);
+      idcs[i] = rand() % (n_rows * n_cols);
 
       repeat = false;
       for (long j = 0; j < i; j++) {
@@ -33,8 +34,8 @@ void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long size) {
   qsort(idcs, n_vals, sizeof(long), comp_long);
 
   for (long i = 0; i < n_vals; ++i) {
-    cols[i] = idcs[i] % size;
-    rows[i] = idcs[i] / size;
+    cols[i] = idcs[i] % n_cols;
+    rows[i] = idcs[i] / n_cols;
   }
   free(idcs);
 }
@@ -48,8 +49,8 @@ void matrix_product_time(long size, long nvals) {
   long *row_pos_B = malloc(nvals * sizeof(long));
   long *col_pos_B = malloc(nvals * sizeof(long));
 
-  gen_randoms(row_pos_A, col_pos_A, values_A, nvals, size);
-  gen_randoms(row_pos_B, col_pos_B, values_B, nvals, size);
+  gen_randoms(row_pos_A, col_pos_A, values_A, nvals, size, size);
+  gen_randoms(row_pos_B, col_pos_B, values_B, nvals, size, size);
 
   MatF m_A = MF_with(size, size, 0.0f);
   MatF m_B = MF_with(size, size, 0.0f);
@@ -59,19 +60,19 @@ void matrix_product_time(long size, long nvals) {
     *MF_PTR(m_B, row_pos_B[i], col_pos_B[i]) = values_B[i];
   }
 
+  SMatF s_A =
+      SM_from_pos_with(size, size, nvals, row_pos_A, col_pos_A, values_A);
+  SMatF s_B =
+      SM_from_pos_with(size, size, nvals, row_pos_B, col_pos_B, values_B);
+
   clock_t m_start = clock();
 
   MatF m_T = MF_EMPTY_LIKE(m_A);
   MF_prod(m_A, m_B, m_T);
 
   clock_t m_end = clock();
-
   double m_time = (double)(m_end - m_start) / CLOCKS_PER_SEC;
 
-  SMatF s_A =
-      SM_from_pos_with(size, size, nvals, row_pos_A, row_pos_A, values_A);
-  SMatF s_B =
-      SM_from_pos_with(size, size, nvals, row_pos_B, row_pos_B, values_B);
 
   clock_t s_start = clock();
 
@@ -81,10 +82,12 @@ void matrix_product_time(long size, long nvals) {
   clock_t s_end = clock();
   double s_time = (double)(s_end - s_start) / CLOCKS_PER_SEC;
 
-  for (long row = 0; row < m_T.rows; ++row) {
-    for (long col = 0; col < m_T.cols; ++col) {
+  bool wrong = false;
+  for (long row = 0; row < m_T.rows && !wrong; ++row) {
+    for (long col = 0; col < m_T.cols && !wrong; ++col) {
       if (MF_AT(m_T, row, col) != SM_at(s_T, row, col)) {
         printf("Incorrect product\n");
+        wrong = true;
         break;
       }
     }
@@ -111,7 +114,7 @@ void matrix_product_time(long size, long nvals) {
 int main(void) {
   srand(69);
   fprintf(stderr, "# SIZE   MatF/s        SMatF/s       SMatF / MatF\n");
-  for (int order = 4; order < 13; ++order) {
+  for (int order = 4; order < 11; ++order) {
     const long size = (long)pow(2, order);
     const long nvals = size * 5;
 
