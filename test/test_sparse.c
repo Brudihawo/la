@@ -59,6 +59,52 @@ SMatF gen_random(long n_vals, long n_rows, long n_cols) {
   return ret;
 }
 
+void test_init_from_pos_with() {
+  float *vals = malloc(N_VALS * sizeof(float));
+  long *pos_row = malloc(N_VALS * sizeof(long));
+  long *pos_col = malloc(N_VALS * sizeof(long));
+
+  const long nrows = SIZE;
+  const long ncols = SIZE;
+  gen_randoms(pos_row, pos_col, vals, N_VALS, nrows, ncols);
+
+  SMatF A = SM_from_pos_with(nrows, ncols, N_VALS, pos_row, pos_col, vals);
+
+  bool fail = false;
+  long idx = 0;
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col = 0; col < A.ncols; ++col) {
+      if (SM_has_loc(A, row, col)) {
+        if (SM_at(A, row, col) != vals[idx]) {
+          TEST_FAIL_MSG("Initialisation from positions",
+                        "Wrong value at index %ld", idx);
+          fail = true;
+        }
+        ++idx;
+      } else {
+        if (SM_at(A, row, col) != 0.0f) {
+          TEST_FAIL_MSG("Initialisation from positions",
+                        "Nonzero Value at (%ld, %ld)", row, col);
+          fail = true;
+        }
+      }
+    }
+  }
+
+  if (idx != A.nvals) {
+    TEST_FAIL_MSG("Initialisation from positions",
+                  "Number of values is wrong%s", "");
+  } else {
+    if (!fail)
+      TEST_PASS("Initialisation from positions");
+  }
+
+  free(vals);
+  free(pos_row);
+  free(pos_col);
+  SM_free(A);
+}
+
 // Test matrix product of random matrix with identity. If result and input
 // matrix are identical, the product should be working correctly.
 void test_random_pos_prod() {
@@ -364,8 +410,28 @@ void test_scalar_prod_self() {
   SM_free(vec);
 }
 
+void test_energy_norm_identity() {
+  SMatF vec = SM_vec_empty(SIZE);
+  for (long i = 0; i < vec.nvals; ++i) {
+    vec.vals[i] = rand_float();
+  }
+
+  float tst = SM_scalar(vec, vec);
+
+  SMatF identity = SM_diag_regular((long[1]){0}, (float[1]){1.0f}, 1, SIZE);
+  float ret = SM_energy_norm(identity, vec, NULL);
+  if (almost_eq(ret, tst)) {
+    TEST_PASS("Energy Norm test with identity");
+  } else {
+    TEST_FAIL("Energy Norm test with identity");
+  }
+  SM_free(identity);
+  SM_free(vec);
+}
+
 int main(void) {
   srand(69);
+  test_init_from_pos_with();
   test_structure_equality_self();
   test_equality_self();
   test_tridiag_vec_prod();
@@ -374,5 +440,6 @@ int main(void) {
   test_add_sub_random();
   test_transpose();
   test_scalar_prod_self();
+  test_energy_norm_identity();
   return EXIT_SUCCESS;
 }
