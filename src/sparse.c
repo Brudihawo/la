@@ -730,7 +730,6 @@ float SM_energy_norm(SMatF A, SMatF x, SMatF *tmp_p) {
     assert(tmp.nrows == x.nrows && tmp.ncols == x.ncols);
   }
 
-
   for (long i = 0; i < tmp.nvals; ++i) {
     tmp.vals[i] = 0.0f;
   }
@@ -750,14 +749,13 @@ float SM_energy_norm(SMatF A, SMatF x, SMatF *tmp_p) {
   return ret;
 }
 
-SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter) {
+SMatF SM_cg(SMatF A, SMatF b, float rel_tol, long n_iter) {
   assert(A.nrows == A.ncols);
   SMatF u_k = SM_empty_like(b);
   SMatF u_k1 = SM_empty_like(b);
   SMatF r_k = SM_empty_like(b);
-  SMatF r_k1 = SM_empty_like(b);
 
-  const float abs_tol = reltol * SM_abs(b);
+  const float abs_tol = SM_abs(b) * rel_tol;
 
   // random initialisation of target
   for (long i = 0; i < u_k.nvals; ++i) {
@@ -765,8 +763,7 @@ SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter) {
   }
 
   SM_prod(A, u_k, r_k);
-  SM_sub(b, r_k, r_k1);
-  SM_swap_vals(&r_k, &r_k1);
+  SM_sub(b, r_k, r_k);
 
   SMatF d_k = SM_clone(r_k);
   SMatF tmp = SM_clone(r_k);
@@ -781,35 +778,31 @@ SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter) {
     if (sqrt(rk_sse) < abs_tol)
       break;
     if (i % 10 == 0)
-      log_msg("Iteration %ld / %ld: Error %f > %f", i, n_iter, sqrt(rk_sse), abs_tol);
+      log_msg("Iteration %ld / %ld: Error %f > %f", i, n_iter, sqrt(rk_sse),
+              abs_tol);
 
     // <r_k, r_k> / <d_k, d_k>_A
     const float a_k = rk_sse / SM_energy_norm(A, d_k, &u_k1);
 
     // done calculating u_k+1
     // u_k1 -> u_k + tmp = u_k + a_k d_k
-    SM_add_scl(u_k, d_k, 1.0f, a_k, u_k1);
+    SM_add_scl(u_k, d_k, 1.0f, a_k, u_k);
 
     // tmp -> a_k A d_k
     SM_prod_scl(A, d_k, a_k, tmp);
 
     // r_k+1 -> r_k - tmp = r_k - a_k A d_k
-    SM_sub(r_k, tmp, r_k1);
+    SM_sub(r_k, tmp, r_k);
 
     // <r_k+1, r_k+1> / <r_k, r_k>
-    const float rk1_sse = SM_sse(r_k1);
+    const float rk1_sse = SM_sse(r_k);
     const float b_k = rk1_sse / rk_sse;
 
-    SM_add_scl(d_k, r_k1, -b_k, 1.0f, d_k);
-
-    SM_swap_vals(&r_k1, &r_k);
-    SM_swap_vals(&u_k1, &u_k);
-
+    SM_add_scl(d_k, r_k, b_k, 1.0f, d_k);
   }
 
   SM_free(u_k1);
   SM_free(r_k);
-  SM_free(r_k1);
   SM_free(tmp);
   SM_free(d_k);
   return u_k;
