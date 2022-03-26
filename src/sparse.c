@@ -26,7 +26,6 @@ SMatF SM_empty(long rows, long cols, long n_vals) {
 
       .col_sizes = calloc(cols, sizeof(long)),
       .col_starts = malloc(cols * sizeof(long)),
-      .col_idcs = malloc(n_vals * sizeof(long)),
       .col_pos = malloc(n_vals * sizeof(long)),
       .vals = malloc(n_vals * sizeof(float)),
       .row_starts = malloc(rows * sizeof(long)),
@@ -40,7 +39,6 @@ SMatF SM_vec_empty(long rows) {
   ret.col_sizes[0] = rows;
   ret.col_starts[0] = 0;
   for (long i = 0; i < rows; ++i) {
-    ret.col_idcs[i] = i;
     ret.col_pos[i] = 0;
 
     ret.row_sizes[i] = 1;
@@ -49,33 +47,22 @@ SMatF SM_vec_empty(long rows) {
   return ret;
 }
 
-float SM_abs(SMatF A) {
+float SM_sse(SMatF A) {
   float acc = 0.0f;
   for (long i = 0; i < A.nvals; ++i) {
     acc += A.vals[i] * A.vals[i];
   }
-  return sqrtf(acc);
+  return acc;
 }
 
-SMatF SM_empty_like(SMatF A) {
-  SMatF ret = {
-      .nrows = A.nrows,
-      .ncols = A.ncols,
-      .nvals = A.nvals,
+float SM_abs(SMatF A) { return sqrtf(SM_sse(A)); }
 
-      .col_sizes = malloc(A.ncols * sizeof(long)),
-      .col_starts = malloc(A.ncols * sizeof(long)),
-      .col_idcs = malloc(A.nvals * sizeof(long)),
-      .col_pos = malloc(A.nvals * sizeof(long)),
-      .vals = malloc(A.nvals * sizeof(float)),
-      .row_starts = malloc(A.nrows * sizeof(long)),
-      .row_sizes = malloc(A.nrows * sizeof(long)),
-  };
+SMatF SM_empty_like(SMatF A) {
+  SMatF ret = SM_empty(A.nrows, A.ncols, A.nvals);
 
   // copy non-zero structure of A
   memcpy(ret.col_sizes, A.col_sizes, A.ncols * sizeof(long));
   memcpy(ret.col_starts, A.col_starts, A.ncols * sizeof(long));
-  memcpy(ret.col_idcs, A.col_idcs, A.nvals * sizeof(long));
   memcpy(ret.col_pos, A.col_pos, A.nvals * sizeof(long));
   memcpy(ret.row_starts, A.row_starts, A.nrows * sizeof(long));
   memcpy(ret.row_sizes, A.row_sizes, A.nrows * sizeof(long));
@@ -107,95 +94,24 @@ void SM_init_start_arrs(SMatF A) {
   }
 }
 
-/* @brief initialize col_idcs after col_sizes, row_sizes, row_starts, col_starts
- * have been initialized
- */
-void SM_init_col_idcs(SMatF A) {
-  long cur_val_idx = 0;
-  for (long col = 0; col < A.ncols; ++col) {   // iterate over columns first
-    for (long row = 0; row < A.nrows; ++row) { // then rows
-      if (SM_has_loc(A, row, col)) {
-        A.col_idcs[cur_val_idx] = SM_idx(A, row, col);
-        ++cur_val_idx;
-      }
-    }
-  }
-}
-
 SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos) {
   check_size(n_rows, n_cols, n_vals);
-  SMatF ret = {
-      .nrows = n_rows,
-      .ncols = n_cols,
-      .nvals = n_vals,
+  SMatF ret = SM_empty(n_rows, n_cols, n_vals);
 
-      .col_sizes = calloc(n_cols, sizeof(long)),
-      .col_starts = malloc(n_cols * sizeof(long)),
-      .col_idcs = malloc(n_vals * sizeof(long)),
-      .col_pos = malloc(n_vals * sizeof(long)),
-      .vals = malloc(n_vals * sizeof(float)),
-      .row_starts = malloc(n_rows * sizeof(long)),
-      .row_sizes = calloc(n_rows, sizeof(long)),
-  };
-
+  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
   memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
-    assert((row_pos[i] > 0 && row_pos[i] < n_rows) &&
-           "Row Position out of bounds");
-    assert((col_pos[i] > 0 && col_pos[i] < n_cols) &&
-           "Column Position out of bounds");
-    // increment corresponding row and column sizes
-    ++ret.col_sizes[col_pos[i]];
-    ++ret.row_sizes[row_pos[i]];
-  }
+    if (row_pos[i] < 0 || row_pos[i] >= n_rows) {
+      log_err("Row position %ld out of bounds for matrix with %ld rows.",
+              row_pos[i], n_rows);
+      exit(EXIT_FAILURE);
+    }
 
-  SM_init_start_arrs(ret);
-
-  // validate nonzero position order
-  long last_idx = -1;
-  for (long i = 0; i < n_vals; ++i) {
-    long cur_idx = SM_idx(ret, row_pos[i], col_pos[i]);
-    assert(last_idx < cur_idx &&
-           "Positions need to be passed in row-major order");
-    last_idx = cur_idx;
-  }
-
-  ret.col_pos = col_pos;
-  for (long i = 0; i < n_vals; ++i) {
-    ret.col_idcs[i] = SM_idx(ret, row_pos[i], col_pos[i]);
-  }
-
-  return ret;
-}
-
-SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
-                       long *col_pos, float *vals) {
-  check_size(n_rows, n_cols, n_vals);
-
-  SMatF ret = {
-      .nrows = n_rows,
-      .ncols = n_cols,
-      .nvals = n_vals,
-
-      .col_sizes = calloc(n_cols, sizeof(long)),
-      .col_starts = malloc(n_cols * sizeof(long)),
-      .col_idcs = malloc(n_vals * sizeof(long)),
-      .col_pos = malloc(n_vals * sizeof(long)),
-      .vals = malloc(n_vals * sizeof(float)),
-      .row_starts = malloc(n_rows * sizeof(long)),
-      .row_sizes = calloc(n_rows, sizeof(long)),
-  };
-
-  memcpy(ret.vals, vals, n_vals * sizeof(float));
-  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
-
-  for (long i = 0; i < n_vals; ++i) {
-    if ((row_pos[i] < 0 || row_pos[i] >= n_rows) ||
-        (col_pos[i] < 0 || col_pos[i] >= n_cols)) {
-      log_err(
-          "Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)");
+    if (col_pos[i] < 0 || col_pos[i] >= n_cols) {
+      log_err("Column position %ld out of bounds for matrix with %ld columns.",
+              col_pos[i], n_cols);
       exit(EXIT_FAILURE);
     }
 
@@ -224,8 +140,13 @@ SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
     last_idx = cur_idx;
   }
 
-  SM_init_col_idcs(ret);
+  return ret;
+}
 
+SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
+                       long *col_pos, float *vals) {
+  SMatF ret = SM_empty_from_pos(n_rows, n_cols, n_vals, row_pos, col_pos);
+  memcpy(ret.vals, vals, n_vals * sizeof(float));
   return ret;
 }
 
@@ -275,8 +196,6 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
   // row / column starts
   SM_init_start_arrs(ret);
 
-  SM_init_col_idcs(ret);
-
   return ret;
 }
 
@@ -307,6 +226,9 @@ bool SM_has_loc(SMatF A, long row, long col) {
   for (long i = 0; i < A.row_sizes[row]; i++) {
     if (A.col_pos[row_start + i] == col)
       return true;
+
+    if (A.col_pos[row_start + i] > col)
+      return false;
   }
   return false;
 }
@@ -347,8 +269,6 @@ bool SM_structure_eq(SMatF A, SMatF B) {
 
   if (memcmp(A.col_pos, B.col_pos, A.nvals * sizeof(long)))
     return false;
-  if (memcmp(A.col_idcs, B.col_idcs, A.nvals * sizeof(long)))
-    return false;
 
   return true;
 }
@@ -366,17 +286,17 @@ bool SM_eq(SMatF A, SMatF B) {
   return true;
 }
 
-void SM_swap_vals(SMatF* A, SMatF* B) {
+void SM_swap_vals(SMatF *A, SMatF *B) {
   assert(A->nvals == B->nvals);
   assert(A->nrows == B->nrows);
   assert(A->ncols == B->ncols);
 
   // swap pointers
-  float* tmp = A->vals;
+  float *tmp = A->vals;
   A->vals = B->vals;
   B->vals = tmp;
 
-  long* tmp_l = A->row_sizes;
+  long *tmp_l = A->row_sizes;
   A->row_sizes = B->row_sizes;
   B->row_sizes = tmp_l;
 }
@@ -464,8 +384,6 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
 
   SM_init_start_arrs(ret);
 
-  SM_init_col_idcs(ret);
-
   return ret;
 }
 
@@ -547,7 +465,6 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
       .col_sizes = calloc(B.ncols, sizeof(long)),
       .col_starts = malloc(B.ncols * sizeof(long)),
-      .col_idcs = NULL,
       .col_pos = NULL,
       .vals = NULL,
       .row_starts = malloc(A.nrows * sizeof(long)),
@@ -581,7 +498,6 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
   // allocate memory
   ret.vals = malloc(ret.nvals * sizeof(float));
-  ret.col_idcs = malloc(ret.nvals * sizeof(long));
   ret.col_pos = malloc(ret.nvals * sizeof(long));
 
   // set positions for row-wise iteration, general manipulation
@@ -600,10 +516,6 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
       }
     }
   }
-
-  // TODO: Do i need column-wise iteration in SMatF?
-  // Assignments for column-wise iteration
-  SM_init_col_idcs(ret);
 
   return ret;
 }
@@ -750,38 +662,50 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter,
   return u_k;
 }
 
+typedef struct {
+  long x, y;
+} SMPos;
+
+int SMPos_comp(const void *lhs, const void *rhs) {
+  const SMPos l = *(SMPos *)lhs;
+  const SMPos r = *(SMPos *)rhs;
+
+  if (l.x == r.x) {
+    return l.y > r.y;
+  } else {
+    return l.x > r.x;
+  }
+}
+
 SMatF SM_transpose(SMatF A) {
-  SMatF ret = SM_empty_like(A);
+  SMatF ret = SM_empty(A.ncols, A.nrows, A.nvals);
 
-  long *tmp_ptr;
-  tmp_ptr = ret.col_sizes;
-  ret.col_sizes = ret.row_sizes;
-  ret.row_sizes = tmp_ptr;
+  memcpy(ret.col_sizes, A.row_sizes, A.nrows * sizeof(long));
+  memcpy(ret.row_sizes, A.col_sizes, A.ncols * sizeof(long));
 
-  tmp_ptr = ret.col_starts;
-  ret.col_starts = ret.row_starts;
-  ret.row_starts = tmp_ptr;
+  memcpy(ret.col_starts, A.row_starts, A.nrows * sizeof(long));
+  memcpy(ret.row_starts, A.col_starts, A.ncols * sizeof(long));
 
-  ret.ncols = A.nrows;
-  ret.nrows = A.ncols;
-  ret.nvals = A.nvals;
-
-  long count = 0;
-  for (long col = 0; col < A.ncols; ++col) {
-    for (long row = 0; row < A.nrows; ++row) {
-      if (SM_has_loc(A, row, col)) {
-        ret.col_pos[count] = row;
-        ++count;
-      }
+  // Create and sort position array
+  SMPos *r_pos = malloc(A.nvals * sizeof(SMPos));
+  long idx = 0;
+  for (long a_row = 0; a_row < A.nrows; ++a_row) {
+    for (long a_col_idx = 0; a_col_idx < A.row_sizes[a_row]; ++a_col_idx) {
+      const long a_col = SM_col(A, a_row, a_col_idx);
+      r_pos[idx] = (SMPos){a_col, a_row};
+      ++idx;
     }
   }
+  qsort(r_pos, A.nvals, sizeof(SMPos), SMPos_comp);
 
-  SM_init_start_arrs(ret);
-  SM_init_col_idcs(ret);
-
+  // set values in ret
   for (long i = 0; i < A.nvals; ++i) {
-    ret.vals[i] = A.vals[A.col_idcs[i]];
+    ret.col_pos[i] = r_pos[i].y;
+    SM_set_or_panic(ret, r_pos[i].x, r_pos[i].y,
+                    SM_at(A, r_pos[i].y, r_pos[i].x));
   }
+
+  free(r_pos);
 
   return ret;
 }
@@ -933,7 +857,6 @@ void SM_print_meta(SMatF A) {
 
 void SM_free(SMatF A) {
   free(A.vals);
-  free(A.col_idcs);
   free(A.row_sizes);
   free(A.col_sizes);
   free(A.row_starts);
