@@ -311,7 +311,12 @@ void SM_set_or_panic(SMatF A, long row, long col, float val) {
 }
 
 float SM_at(SMatF A, long row, long col) {
-  assert(row < A.nrows && col < A.ncols && "Position out of bounds");
+  if (row >= A.nrows || col >= A.ncols) {
+    log_err(
+        "Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)",
+        row, col, A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
 
   long idx = SM_idx(A, row, col);
   return idx == SM_NOT_PRESENT ? 0.0f : A.vals[idx];
