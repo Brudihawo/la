@@ -400,12 +400,8 @@ void SM_add(SMatF A, SMatF B, SMatF target) {
   for (long row = 0; row < target.nrows; ++row) {
     for (long col_idx = 0; col_idx < target.row_sizes[row]; ++col_idx) {
       const long col = SM_col_or_panic(target, row, col_idx);
-      if (SM_has_loc(target, row, col)) {
-        // TODO: think about checking querying nonzero in A or B first, but i
-        // think this is more efficient right now.
-        SM_set_or_panic(target, row, col,
-                        SM_at(A, row, col) + SM_at(B, row, col));
-      }
+      SM_set_or_panic(target, row, col,
+                      SM_at(A, row, col) + SM_at(B, row, col));
     }
   }
 }
@@ -418,12 +414,8 @@ void SM_add_scl(SMatF A, SMatF B, float s_a, float s_b, SMatF target) {
   for (long row = 0; row < target.nrows; ++row) {
     for (long col_idx = 0; col_idx < target.row_sizes[row]; ++col_idx) {
       const long col = SM_col_or_panic(target, row, col_idx);
-      if (SM_has_loc(target, row, col)) {
-        // TODO: think about checking querying nonzero in A or B first, but i
-        // think this is more efficient right now.
-        SM_set_or_panic(target, row, col,
-                        s_a * SM_at(A, row, col) + s_b * SM_at(B, row, col));
-      }
+      SM_set_or_panic(target, row, col,
+                      s_a * SM_at(A, row, col) + s_b * SM_at(B, row, col));
     }
   }
 }
@@ -434,13 +426,10 @@ void SM_sub(SMatF A, SMatF B, SMatF target) {
          "Size mismatch. A, B, and target need to have the same size!");
 
   for (long row = 0; row < target.nrows; ++row) {
-    for (long col = 0; col < target.nrows; ++col) {
-      if (SM_has_loc(target, row, col)) {
-        // TODO: think about checking querying nonzero in A or B first, but i
-        // think this is more efficient right now.
-        SM_set_or_panic(target, row, col,
-                        SM_at(A, row, col) - SM_at(B, row, col));
-      }
+    for (long col_idx = 0; col_idx < target.row_sizes[row]; ++col_idx) {
+      const long col = SM_col_or_panic(target, row, col_idx);
+      SM_set_or_panic(target, row, col,
+                      SM_at(A, row, col) - SM_at(B, row, col));
     }
   }
 }
@@ -587,14 +576,14 @@ float SM_scalar(SMatF A, SMatF B) {
     exit(EXIT_FAILURE);
   }
 
-  float ret = 0;
+  float ret = 0.0f;
   for (long row = 0; row < A.nrows; row++) {
     for (long col_idx = 0; col_idx < A.row_sizes[row];
          col_idx++) { // iterate on row, column in A
       // Test position existance in B
       const long col = SM_col_or_panic(A, row, col_idx);
       if (SM_has_loc(B, row, col)) {
-          ret += SM_at(A, row, col) * SM_at(B, row, col);
+        ret += SM_at(A, row, col) * SM_at(B, row, col);
       }
     }
   }
