@@ -439,9 +439,9 @@ int main(void) {
   test_init_from_pos_with();
   test_structure_equality_self();
   test_equality_self();
-  test_tridiag_vec_prod();
-  test_random_pos_dif_sizes_prod_ver_matf();
   test_random_pos_prod();
+  test_random_pos_dif_sizes_prod_ver_matf();
+  test_tridiag_vec_prod();
   test_add_sub_random();
   test_transpose();
   test_scalar_prod_self();
