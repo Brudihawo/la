@@ -35,3 +35,4 @@ void RP_free(RowPerm *perms) {
   free(perms->order);
 }
 
+float rand_float() { return (float)rand() / (float)RAND_MAX; }

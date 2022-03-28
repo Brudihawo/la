@@ -7,7 +7,6 @@
 #define GRN_N "\033[0;32m"
 #define RST   "\033[0m"
 
-float rand_float() { return (float)rand() / (float)RAND_MAX; }
 
 #define TEST_PASS(name) \
   fprintf(stdout, GRN "PASSED:"RST" %s in %s\n  %s:%i\n",\

@@ -5,8 +5,6 @@
 #include "stdlib.h"
 #include "time.h"
 
-float rand_float() { return (float)rand() / (float)RAND_MAX; }
-
 int comp_long(const void *a, const void *b) {
   const long va = *(long *)a;
   const long vb = *(long *)b;

@@ -20,4 +20,6 @@ void RP_free(RowPerm *perms);
 
 bool almost_eq(float a, float b);
 
+float rand_float();
+
 #endif // LA_H
