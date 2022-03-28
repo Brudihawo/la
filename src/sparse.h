@@ -172,7 +172,7 @@ void SM_swap_vals(SMatF *A, SMatF *B);
  * @param row row
  * @param col_idx column index
  *
- * @return column index or SM_NOT_PRESENT if not present
+ * @return column or SM_NOT_PRESENT if not present
  */
 long SM_col(SMatF A, long row, long col_idx);
 
