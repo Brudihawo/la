@@ -314,24 +314,6 @@ float SM_scalar(SMatF A, SMatF B);
  */
 float SM_energy_norm(SMatF A, SMatF x, SMatF *tmp_p);
 
-/* @brief Print contents of A
- *
- * @param A SMatF to print
- */
-void SM_print(SMatF A);
-
-/* @brief Print non-zero structure of A
- *
- * @param A SMatF to print
- */
-void SM_print_nonzero(SMatF A);
-
-/* @brief Print meta information of A (for debug purposes)
- *
- * @param A SMatF to print
- */
-void SM_print_meta(SMatF A);
-
 /* @brief Use jacobi iterative method to solv A * u = b
  *
  * @param A Coefficient matrix
@@ -367,6 +349,24 @@ void SM_vec_iteration(SMatF A, SMatF target, float rel_tol);
  * @param A SMatF to print
  */
 void SM_print_shape(SMatF A);
+
+/* @brief Print contents of A
+ *
+ * @param A SMatF to print
+ */
+void SM_print(SMatF A);
+
+/* @brief Print non-zero structure of A
+ *
+ * @param A SMatF to print
+ */
+void SM_print_nonzero(SMatF A);
+
+/* @brief Print meta information of A (for debug purposes)
+ *
+ * @param A SMatF to print
+ */
+void SM_print_meta(SMatF A);
 
 /* @brief Free SMatF memory
  *
