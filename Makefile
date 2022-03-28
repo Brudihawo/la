@@ -88,4 +88,5 @@ clean:
 	rm -vf $(tests)
 	rm -vf $(benchs)
 	rm -vf $(examples)
+	rm -vf *grind.out*
 	rm -vfr coverage
