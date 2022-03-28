@@ -765,13 +765,13 @@ SMatF SM_transpose(SMatF A) {
       ++idx;
     }
   }
-  qsort(r_pos, A.nvals, sizeof(SMPos), SMPos_comp);
+  qsort(r_pos, A.nvals, sizeof(SMPos), SMPos_comp_rm);
 
   // set values in ret
   for (long i = 0; i < A.nvals; ++i) {
-    ret.col_pos[i] = r_pos[i].y;
-    SM_set_or_panic(ret, r_pos[i].x, r_pos[i].y,
-                    SM_at(A, r_pos[i].y, r_pos[i].x));
+    ret.col_pos[i] = r_pos[i].col;
+    SM_set_or_panic(ret, r_pos[i].row, r_pos[i].col,
+                    SM_at(A, r_pos[i].col, r_pos[i].row));
   }
 
   free(r_pos);
