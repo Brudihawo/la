@@ -9,7 +9,10 @@ examples := $(patsubst %.c,%,$(wildcard $(EXDIR)/*.c))
 
 CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -std=c11 -flto -fvisibility=hidden
 SANIFLAGS := -fsanitize=address,leak,undefined,bounds,cfi
+VERB_FLAG :=
+
 LIBS := -lm
+
 CC := clang
 
 .PHONY = example test bench
@@ -24,14 +27,22 @@ endif
 
 ifeq ("$(DEBUG)", "true")
   CFLAGS += -g -O0
+	VERB_FLAG = -DVERB_LEVEL=VERB_DBG
 else
-  CFLAGS += -O2
+  CFLAGS += -O3
+	VERB_FLAG = -DVERB_LEVEL=VERB_WRN
+endif
+
+ifeq ("$(NOVERBOSE)", "true") 
+	VERB_FLAG = -DVERB_LEVEL=VERB_ERR
 endif
 
 ifeq ("$(SANITIZE)", "true")
   CFLAGS += $(SANIFLAGS)
 endif
 
+
+CFLAGS += $(VERB_FLAG)
 
 $(objs): %.o: %.c
 	@$(ECHO) $@

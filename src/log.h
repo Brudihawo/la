@@ -7,7 +7,9 @@ typedef enum {
   VERB_DBG,
 } PrintVerbosity;
 
-#define VERB_LEVEL VERB_DBG
+#ifndef VERB_LEVEL
+#define VERB_LEVEL VERB_ERR
+#endif
 
 #define log_msg(...) _log(VERB_DBG, __func__, __FILE__, __LINE__, __VA_ARGS__)
 #define log_wrn(...) _log(VERB_WRN, __func__, __FILE__, __LINE__, __VA_ARGS__)
