@@ -702,7 +702,6 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_tol, long n_iter) {
 
   SMatF cur_result = SM_prod_prepare(A, b);
   SMatF err = SM_empty_like(b);
-  float last_err = -1;
   float abs_tol = SM_abs(b) * rel_tol;
 
   for (long iter = 0; iter < n_iter; ++iter) {
@@ -716,7 +715,6 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_tol, long n_iter) {
       if (iter % 10 == 0)
         log_msg("Iteration %ld: %f > %f", iter, abs_err, abs_tol);
 
-      last_err = abs_err;
       for (long i = 0; i < u_k.nvals; ++i) {
         u_k1.vals[i] = 0;
       }
