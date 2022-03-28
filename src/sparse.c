@@ -948,7 +948,10 @@ void SM_back_sub(SMatF tri_up, SMatF b, SMatF target) {
                       SM_at(tri_up, tri_up.nrows - 1, tri_up.ncols - 1));
   for (long row = b.nrows - 2; row >= 0; --row) {
     SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
-    for (long col = row + 1; col < target.nrows; ++col) {
+
+    for (long col_i = row + 1; col_i < tri_up.row_sizes[row]; ++col_i) {
+      const long col = SM_col(tri_up, row, col_i);
+
       *SM_ptr_or_panic(target, row, 0) -=
           SM_at(target, row, 0) * SM_at(tri_up, row, col);
     }
@@ -980,7 +983,10 @@ void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target) {
   SM_set_or_panic(target, 0, 0, b.vals[0] / SM_at(tri_lo, 0, 0));
   for (long row = 1; row < b.nrows; row++) {
     SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
-    for (long col = 0; col < row; col++) {
+
+    for (long col_i = tri_lo.row_sizes[row] - 1; col_i >= 0; --col_i) {
+      const long col = SM_col(tri_lo, row, col_i);
+
       *SM_ptr_or_panic(target, row, 0) -=
           SM_at(target, row, 0) * SM_at(tri_lo, row, col);
     }
