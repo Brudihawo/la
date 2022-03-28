@@ -336,6 +336,36 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter);
  */
 SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter);
 
+/* @brief determine if A is a triangular upper matrix
+ * 
+ * @param A matrix to analyse
+ * @param diagonal whether diagonal may be nonzero
+ */
+bool SM_is_triup(SMatF A, bool diagonal);
+
+/* @brief determine if A is a triangular lower matrix
+ * 
+ * @param A matrix to analyse
+ * @param diagonal whether diagonal may be nonzero
+ */
+bool SM_is_trilo(SMatF A, bool diagonal);
+
+/* @brief perform backward substitution on tri_up (solve tri_up target = b)
+ * 
+ * @param tri_up triangular upper matrix to perform substitution on
+ * @param b solution vector of equation
+ * @param target where to write results
+ */
+void SM_back_sub(SMatF tri_up, SMatF b, SMatF target);
+
+/* @brief perform backward substitution on tri_lo (solve tri_lo target = b)
+ * 
+ * @param tri_lo triangular lower matrix to perform substitution on
+ * @param b solution vector of equation
+ * @param target where to write results
+ */
+void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target);
+
 /* @brief Compute largest Eigenvector of A using vector iteration
  *
  * @param A matrix for EV computation

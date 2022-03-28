@@ -884,6 +884,110 @@ SMatF SM_cg(SMatF A, SMatF b, float rel_tol, long n_iter) {
   return u_k;
 }
 
+bool SM_is_triup(SMatF A, bool diagonal) {
+  if (A.ncols != A.nrows)
+    return false;
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
+      const long col = SM_col(A, row, col_i);
+      if (diagonal) {
+        if (col < row)
+          return false;
+      } else {
+        if (col <= row)
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool SM_is_trilo(SMatF A, bool diagonal) {
+  if (A.ncols != A.nrows)
+    return false;
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
+      const long col = SM_col(A, row, col_i);
+      if (diagonal) {
+        if (col > row)
+          return false;
+      } else {
+        if (col >= row)
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
+void SM_back_sub(SMatF tri_up, SMatF b, SMatF target) {
+  // size checks
+  if (!SM_is_triup(tri_up, true)) {
+    log_err("Structure mismatch: tri_up needs to be a triangular upper matrix");
+    exit(EXIT_FAILURE);
+  }
+
+  if (b.ncols != 1 || b.nrows != tri_up.nrows) {
+    log_err("Size mismatch: Expected b to have dimensions (%ld x 1), found "
+            "(%ld x %ld).",
+            tri_up.nrows, b.nrows, b.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  if (target.ncols != 1 || target.nrows != tri_up.ncols) {
+    log_err("Size mismatch: Expected b to have dimensions (%ld x 1), found "
+            "(%ld x %ld).",
+            tri_up.ncols, target.nrows, target.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  SM_set_or_panic(target, target.nrows - 1, 0,
+                  b.vals[b.nrows - 1] /
+                      SM_at(tri_up, tri_up.nrows - 1, tri_up.ncols - 1));
+  for (long row = b.nrows - 2; row >= 0; --row) {
+    SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
+    for (long col = row + 1; col < target.nrows; ++col) {
+      *SM_ptr_or_panic(target, row, 0) -=
+          SM_at(target, row, 0) * SM_at(tri_up, row, col);
+    }
+    *SM_ptr_or_panic(target, row, 0) /= SM_at(tri_up, row, row);
+  }
+}
+
+void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target) {
+  // size checks
+  if (!SM_is_trilo(tri_lo, true)) {
+    log_err("Structure mismatch: tri_lo needs to be a triangular lower matrix");
+    exit(EXIT_FAILURE);
+  }
+
+  if (b.ncols != 1 || b.nrows != tri_lo.nrows) {
+    log_err("Size mismatch: Expected b to have dimensions (%ld x 1), found "
+            "(%ld x %ld).",
+            tri_lo.nrows, b.nrows, b.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  if (target.ncols != 1 || target.nrows != tri_lo.ncols) {
+    log_err("Size mismatch: Expected b to have dimensions (%ld x 1), found "
+            "(%ld x %ld).",
+            tri_lo.ncols, target.nrows, target.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  SM_set_or_panic(target, 0, 0, b.vals[0] / SM_at(tri_lo, 0, 0));
+  for (long row = 1; row < b.nrows; row++) {
+    SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
+    for (long col = 0; col < row; col++) {
+      *SM_ptr_or_panic(target, row, 0) -=
+          SM_at(target, row, 0) * SM_at(tri_lo, row, col);
+    }
+    *SM_ptr_or_panic(target, row, 0) /= SM_at(tri_lo, row, row);
+  }
+}
+
 void SM_vec_iteration(SMatF A, SMatF target, float rel_tol) {
   assert(A.nrows == A.ncols);
 

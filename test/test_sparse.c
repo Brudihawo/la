@@ -434,6 +434,91 @@ void test_energy_norm_identity() {
   SM_free(vec);
 }
 
+void test_is_triup() {
+  SMatF is_triup = SM_diag_regular((long[3]){0, 1, 2},
+                                   (float[3]){1.0f, -3.0f, 2.0f}, 3, SIZE);
+
+  SMatF no_triup = SM_diag_regular((long[3]){-1, 0, 2},
+                                   (float[3]){1.0f, -3.0f, 2.0f}, 3, SIZE);
+
+  if (!SM_is_triup(is_triup, true)) {
+    TEST_FAIL("Triangular upper matrix test (shouldn't be triup)");
+    SM_print_nonzero(is_triup);
+  } else {
+    TEST_PASS("Triangular upper matrix test (shouldn't bee triup)");
+  }
+
+  if (SM_is_triup(no_triup, true)) {
+    TEST_FAIL("Triangular upper matrix test (should be triup)");
+    SM_print_nonzero(no_triup);
+  } else {
+    TEST_PASS("Triangular upper matrix test (should be triup)");
+  }
+
+  SM_free(is_triup);
+  SM_free(no_triup);
+}
+
+void test_back_sub() {
+  SMatF b = SM_vec_empty(SIZE);
+  for (long i = 0; i < b.nvals; ++i) {
+    b.vals[i] = rand_float();
+  }
+  SMatF target = SM_empty_like(b);
+  SMatF A = SM_diag_regular((long[3]){0, 1, 2}, (float[3]){1.0f, -3.0f, 2.0f},
+                            3, SIZE);
+
+  SM_back_sub(A, b, target);
+
+  SMatF b1 = SM_prod_prepare(A, target);
+  SM_prod(A, target, b1);
+  SMatF err = SM_addsub_prepare(b, b1);
+  SM_sub(b, b1, err);
+
+  float err_abs = SM_abs(err);
+  if (!almost_eq(err_abs, 0.0f)) {
+    TEST_FAIL_MSG("Backward substitution", "Error too large: %f", err_abs);
+  } else {
+    TEST_PASS("Backward substitution");
+  }
+
+  SM_free(A);
+  SM_free(b);
+  SM_free(b1);
+  SM_free(err);
+  SM_free(target);
+}
+
+void test_forw_sub() {
+  SMatF b = SM_vec_empty(SIZE);
+  for (long i = 0; i < b.nvals; ++i) {
+    b.vals[i] = rand_float();
+  }
+  SMatF target = SM_empty_like(b);
+  SMatF A = SM_diag_regular((long[3]){-2, -1, 0}, (float[3]){1.0f, -3.0f, 2.0f},
+                            3, SIZE);
+
+  SM_forw_sub(A, b, target);
+
+  SMatF b1 = SM_prod_prepare(A, target);
+  SM_prod(A, target, b1);
+  SMatF err = SM_addsub_prepare(b, b1);
+  SM_sub(b, b1, err);
+
+  float err_abs = SM_abs(err);
+  if (!almost_eq(err_abs, 0.0f)) {
+    TEST_FAIL_MSG("Forward substitution", "Error too large: %f", err_abs);
+  } else {
+    TEST_PASS("Forward substitution");
+  }
+
+  SM_free(A);
+  SM_free(b);
+  SM_free(b1);
+  SM_free(err);
+  SM_free(target);
+}
+
 int main(void) {
   srand(69);
   test_init_from_pos_with();
@@ -446,5 +531,8 @@ int main(void) {
   test_transpose();
   test_scalar_prod_self();
   test_energy_norm_identity();
+  test_is_triup();
+  test_back_sub();
+  test_forw_sub();
   return EXIT_SUCCESS;
 }
