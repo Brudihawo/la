@@ -519,6 +519,174 @@ void test_forw_sub() {
   SM_free(target);
 }
 
+void test_subset_diag() {
+  SMatF A = gen_random(N_VALS, SIZE, SIZE);
+  SMatF diag = SM_subset_diag(A);
+
+  bool fail = false;
+  for (long i = 0; i < A.ncols && !fail; ++i) {
+    float correct = SM_at(A, i, i);
+    float found = SM_at(diag, i, i);
+    if (correct != found) {
+      fail = true;
+      TEST_FAIL_MSG("Subset diagonal - diagonal values",
+                    "Unexpected value on diagonal (%ld: %f), expected %f", i,
+                    found, correct);
+    }
+
+    if (SM_has_loc(A, i, i) && !SM_has_loc(diag, i, i)) {
+      fail = true;
+      TEST_FAIL_MSG("Subset diagonal - diagonal values",
+                    "Missing value at (%ld, %ld)", i, i);
+    }
+
+    if (!SM_has_loc(A, i, i) && SM_has_loc(diag, i, i)) {
+      fail = true;
+      TEST_FAIL_MSG("Subset diagonal - diagonal values",
+                    "Additional value at (%ld, %ld)", i, i);
+    }
+  }
+
+  if (!fail) {
+    TEST_PASS("Subset diagonal - diagonal values");
+  }
+
+  fail = false;
+  for (long row = 0; row < A.nrows && !fail; ++row) {
+    for (long col = 0; col < A.ncols && !fail; ++col) {
+      if (row == col)
+        continue;
+
+      if (SM_has_loc(diag, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset diagonal - off-diagonal values",
+                      "Additional value at (%ld, %ld)", row, col);
+      }
+    }
+  }
+  if (!fail)
+    TEST_PASS("Subset diagonal - off-diagonal values");
+
+  SM_free(A);
+  SM_free(diag);
+}
+
+void test_subset_trilo() {
+  SMatF A = gen_random(N_VALS, SIZE, SIZE);
+  bool use_diag = true;
+  SMatF trilo = SM_subset_trilo(A, use_diag);
+
+  bool fail = false;
+  for (long row = 0; row < trilo.nrows && !fail; ++row) {
+    for (long col = 0; col < trilo.ncols && !fail; ++col) {
+      if (use_diag && col > row) continue;
+      if (!use_diag && col >= row) continue;
+
+      float correct = SM_at(A, row, col);
+      float found = SM_at(trilo, row, col);
+      if (correct != found) {
+        fail = true;
+        TEST_FAIL_MSG("Subset trilo - triangular lower values",
+                      "Unexpected value on at (%ld, %ld: %f), expected %f", row, col,
+                      found, correct);
+      }
+
+      if (SM_has_loc(A, row, col) && !SM_has_loc(trilo, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset trilo - triangular lower values",
+                      "Missing value at (%ld, %ld)", row, col);
+      }
+
+      if (!SM_has_loc(A, row, col) && SM_has_loc(trilo, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset trilo - triangular lower values",
+                      "Additional value at (%ld, %ld)", row, col);
+      }
+    }
+  }
+
+  if (!fail) {
+    TEST_PASS("Subset trilo - triangular lower values");
+  }
+
+  fail = false;
+  for (long row = 0; row < A.nrows && !fail; ++row) {
+    for (long col = 0; col < A.ncols && !fail; ++col) {
+      if (use_diag && col <= row) continue;
+      if (!use_diag && col < row) continue;
+
+      if (SM_has_loc(trilo, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset trilo - upper values",
+                      "Additional value at (%ld, %ld)", row, col);
+      }
+    }
+  }
+  if (!fail)
+    TEST_PASS("Subset trilo - upper values");
+
+  SM_free(A);
+  SM_free(trilo);
+}
+
+void test_subset_triup() {
+  SMatF A = gen_random(N_VALS, SIZE, SIZE);
+  bool use_diag = true;
+  SMatF triup = SM_subset_triup(A, use_diag);
+
+  bool fail = false;
+  for (long row = 0; row < triup.nrows && !fail; ++row) {
+    for (long col = 0; col < triup.ncols && !fail; ++col) {
+      if (use_diag && col < row) continue;
+      if (!use_diag && col <= row) continue;
+
+      float correct = SM_at(A, row, col);
+      float found = SM_at(triup, row, col);
+      if (correct != found) {
+        fail = true;
+        TEST_FAIL_MSG("Subset triup - triangular upper values",
+                      "Unexpected value on at (%ld, %ld: %f), expected %f", row, col,
+                      found, correct);
+      }
+
+      if (SM_has_loc(A, row, col) && !SM_has_loc(triup, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset triup - triangular upper values",
+                      "Missing value at (%ld, %ld)", row, col);
+      }
+
+      if (!SM_has_loc(A, row, col) && SM_has_loc(triup, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset triup - triangular upper values",
+                      "Additional value at (%ld, %ld)", row, col);
+      }
+    }
+  }
+
+  if (!fail) {
+    TEST_PASS("Subset triup - triangular upper values");
+  }
+
+  fail = false;
+  for (long row = 0; row < A.nrows && !fail; ++row) {
+    for (long col = 0; col < A.ncols && !fail; ++col) {
+      if (use_diag && col >= row) continue;
+      if (!use_diag && col > row) continue;
+
+      if (SM_has_loc(triup, row, col)) {
+        fail = true;
+        TEST_FAIL_MSG("Subset triup - triangular lower values",
+                      "Additional value at (%ld, %ld)", row, col);
+      }
+    }
+  }
+  if (!fail)
+    TEST_PASS("Subset triup - triangular lower values");
+
+  SM_free(A);
+  SM_free(triup);
+}
+
 int main(void) {
   srand(69);
   test_init_from_pos_with();
@@ -534,5 +702,8 @@ int main(void) {
   test_is_triup();
   test_back_sub();
   test_forw_sub();
+  test_subset_diag();
+  test_subset_trilo();
+  test_subset_triup();
   return EXIT_SUCCESS;
 }

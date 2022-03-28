@@ -884,6 +884,128 @@ SMatF SM_cg(SMatF A, SMatF b, float rel_tol, long n_iter) {
   return u_k;
 }
 
+SMatF SM_subset_diag(SMatF A) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only subset diagonal from square SMatF. A has dimensions "
+            "(%ld, %ld)",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  RSBufL elements = RSBL_with_size(A.nrows);
+
+  for (long i = 0; i < A.nrows; ++i) {
+    if (SM_has_loc(A, i, i)) {
+      RSBL_push_val(&elements, i);
+    }
+  }
+  SMatF ret = SM_empty(A.nrows, A.ncols, elements.size);
+
+  memcpy(ret.col_pos, elements.vals, elements.size * sizeof(long));
+
+  for (long i = 0; i < elements.size; ++i) {
+    long pos = ret.col_pos[i];
+    ret.col_sizes[pos] = 1;
+    ret.row_sizes[pos] = 1;
+  }
+  SM_init_start_arrs(ret);
+
+  for (long i = 0; i < elements.size; ++i) {
+    long pos = ret.col_pos[i];
+    SM_set_or_panic(ret, pos, pos, SM_at(A, pos, pos));
+  }
+
+
+  RSBL_free(elements);
+  return ret;
+}
+
+SMatF SM_subset_trilo(SMatF A, bool diag) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only subset diagonal from square SMatF. A has dimensions "
+            "(%ld, %ld)",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  PosBuf elements = PB_with_size(A.nvals);
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
+      const long col = SM_col(A, row, col_i);
+      if (diag && row < col) continue;
+      if (!diag && row <= col) continue;
+
+      PB_push_val(&elements, row, col, SM_at(A, row, col));
+    }
+  }
+  SMatF ret = SM_empty(A.nrows, A.ncols, elements.size);
+
+  for (long i = 0; i < elements.size; ++i) {
+    const long col = elements.vals[i].pos.col;
+    const long row = elements.vals[i].pos.row;
+
+    ++ret.col_sizes[col];
+    ++ret.row_sizes[row];
+    ret.col_pos[i] = col;
+  }
+  SM_init_start_arrs(ret);
+
+  for (long i = 0; i < elements.size; ++i) {
+    const long col = elements.vals[i].pos.col;
+    const long row = elements.vals[i].pos.row;
+    const float val = elements.vals[i].val;
+
+    SM_set_or_panic(ret, row, col, val);
+  }
+
+  PB_free(elements);
+  return ret;
+}
+
+SMatF SM_subset_triup(SMatF A, bool diag) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only subset diagonal from square SMatF. A has dimensions "
+            "(%ld, %ld)",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  PosBuf elements = PB_with_size(A.nvals);
+
+  for (long row = 0; row < A.nrows; ++row) {
+    for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
+      const long col = SM_col(A, row, col_i);
+      if (diag && row > col) continue;
+      if (!diag && row >= col) continue;
+
+      PB_push_val(&elements, row, col, SM_at(A, row, col));
+    }
+  }
+  SMatF ret = SM_empty(A.nrows, A.ncols, elements.size);
+
+  for (long i = 0; i < elements.size; ++i) {
+    const long col = elements.vals[i].pos.col;
+    const long row = elements.vals[i].pos.row;
+
+    ++ret.col_sizes[col];
+    ++ret.row_sizes[row];
+    ret.col_pos[i] = col;
+  }
+  SM_init_start_arrs(ret);
+
+  for (long i = 0; i < elements.size; ++i) {
+    const long col = elements.vals[i].pos.col;
+    const long row = elements.vals[i].pos.row;
+    const float val = elements.vals[i].val;
+
+    SM_set_or_panic(ret, row, col, val);
+  }
+
+  PB_free(elements);
+  return ret;
+}
+
 bool SM_is_triup(SMatF A, bool diagonal) {
   if (A.ncols != A.nrows)
     return false;
