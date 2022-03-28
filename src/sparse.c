@@ -808,6 +808,44 @@ SMatF SM_cg(SMatF A, SMatF b, float rel_tol, long n_iter) {
   return u_k;
 }
 
+void SM_vec_iteration(SMatF A, SMatF target, float rel_tol) {
+  assert(A.nrows == A.ncols);
+
+  for (long i = 0; i < target.nvals; ++i) {
+    target.vals[i] = rand_float();
+  }
+
+  SMatF y = SM_empty_like(target);
+
+  float *t_vals = target.vals;
+
+  float err = FLT_MAX;
+  long iter = 0;
+  while (err > rel_tol) {
+    SM_prod(A, target, y);
+
+    const float ev = SM_at(target, 0, 0) / SM_at(y, 0, 0);
+    err = 0.0f;
+    for (long i = 0; i < y.nvals; ++i) {
+      err += powf(ev * SM_at(y, i, 0) - SM_at(target, i, 0), 2);
+    }
+    const float y_len = SM_abs(y);
+    err = sqrtf(err) / y_len;
+    if (iter % 10 == 0)
+      log_msg("Iteration %ld, EV: %f, ERR: %f", iter, ev, err);
+
+    SM_scl_inplace(y, 1.0f / y_len);
+    SM_swap_vals(&y, &target);
+    ++iter;
+  }
+
+  if (t_vals != target.vals) {
+    SM_swap_vals(&target, &y);
+  }
+
+  SM_free(y);
+}
+
 void SM_print(SMatF A) {
   printf("[");
   for (long row = 0; row < A.nrows; row++) {

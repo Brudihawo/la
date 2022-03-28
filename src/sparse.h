@@ -355,6 +355,14 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_err_max, long n_iter);
  */
 SMatF SM_cg(SMatF A, SMatF b, float reltol, long n_iter);
 
+/* @brief Compute largest Eigenvector of A using vector iteration
+ *
+ * @param A matrix for EV computation
+ * @param target Where to save EV
+ * @param rel_tol relative tolerance for error
+ */
+void SM_vec_iteration(SMatF A, SMatF target, float rel_tol);
+
 /* @brief Print shape of A
  *
  * @param A SMatF to print
