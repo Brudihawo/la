@@ -6,8 +6,95 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+#include "float.h"
 #include "la.h"
-#include <math.h>
+#include "math.h"
+
+typedef struct {
+  long row, col;
+} SMPos;
+
+typedef struct {
+  SMPos pos;
+  float val;
+} SMEntry;
+
+typedef struct {
+  SMEntry *vals;
+  long size;
+  long cap;
+} PosBuf; // resizable buffer of SMEntry
+
+typedef struct {
+  long *vals;
+  long size;
+  long cap;
+} RSBufL; // resizable buffer of longs
+
+/* @brief Comparison for row major sorting of SMPos
+ */
+int SMPos_comp_rm(const void *lhs, const void *rhs) {
+  const SMPos l = *(SMPos *)lhs;
+  const SMPos r = *(SMPos *)rhs;
+
+  if (l.row == r.row) {
+    return l.col > r.col;
+  } else {
+    return l.row > r.row;
+  }
+}
+
+/* @brief Comparison for row major sorting of SMEntry
+ */
+int SMEntry_comp_rm(const void *lhs, const void *rhs) {
+  const SMEntry *l = (SMEntry *)lhs;
+  const SMEntry *r = (SMEntry *)rhs;
+
+  return SMPos_comp_rm(l, r);
+}
+
+RSBufL RSBL_with_size(long cap) {
+  return (RSBufL){
+      .vals = malloc(cap * sizeof(long)),
+      .cap = cap,
+      .size = 0,
+  };
+}
+
+PosBuf PB_with_size(long cap) {
+  return (PosBuf){
+      .vals = malloc(cap * sizeof(SMEntry)),
+      .cap = cap,
+      .size = 0,
+  };
+}
+
+#define DYNBUF_CAP_SCL 1.8f
+static inline void RSBL_push_val(RSBufL *buf, long val) {
+  if (buf->size >= buf->cap) {
+    buf->cap *= DYNBUF_CAP_SCL;
+    buf->vals = realloc(buf->vals, buf->cap * sizeof(long));
+  }
+
+  buf->vals[buf->size] = val;
+  ++buf->size;
+}
+
+static inline void PB_push_val(PosBuf *buf, long row, long col, float val) {
+  if (buf->size >= buf->cap) {
+    buf->cap *= DYNBUF_CAP_SCL;
+    buf->vals = realloc(buf->vals, buf->cap * sizeof(SMEntry));
+  }
+
+  buf->vals[buf->size].pos.row = row;
+  buf->vals[buf->size].pos.col = col;
+  buf->vals[buf->size].val = val;
+  ++buf->size;
+}
+
+void RSBL_free(RSBufL buf) { free(buf.vals); }
+
+void PB_free(PosBuf buf) { free(buf.vals); }
 
 #define check_size(rows, cols, n_vals)                                         \
   if (n_vals > rows * cols) {                                                  \
@@ -98,9 +185,7 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
                         long *col_pos) {
   check_size(n_rows, n_cols, n_vals);
   SMatF ret = SM_empty(n_rows, n_cols, n_vals);
-
-  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
-  memcpy(ret.col_pos, col_pos, n_vals * sizeof(long));
+  PosBuf buf = PB_with_size(n_vals);
 
   for (long i = 0; i < n_vals; ++i) {
     if (row_pos[i] < 0 || row_pos[i] >= n_rows) {
@@ -118,35 +203,56 @@ SMatF SM_empty_from_pos(long n_rows, long n_cols, long n_vals, long *row_pos,
     // increment corresponding row and column sizes
     ++ret.col_sizes[col_pos[i]];
     ++ret.row_sizes[row_pos[i]];
+    PB_push_val(&buf, row_pos[i], col_pos[i], 0.0f);
   }
 
   SM_init_start_arrs(ret);
 
-  // validate nonzero position order
-  long last_idx = -1;
+  qsort(buf.vals, n_vals, sizeof(SMEntry), SMEntry_comp_rm);
   for (long i = 0; i < n_vals; ++i) {
-    long cur_idx = SM_idx(ret, row_pos[i], col_pos[i]);
-    if (last_idx > cur_idx) {
-      assert(i != 0);
-      log_err("Positions need to be passed in row-major order "
-              "(not satisfied by last and current positions %ld / %ld at (%ld, "
-              "%ld) "
-              "and (%ld, %ld) with row-major indices %ld and %ld: %ld > %ld)",
-              i - 1, i, row_pos[i - 1], col_pos[i - 1], row_pos[i], col_pos[i],
-              last_idx, cur_idx, last_idx, cur_idx);
-      exit(EXIT_FAILURE);
-    }
-
-    last_idx = cur_idx;
+    ret.col_pos[i] = buf.vals[i].pos.col;
   }
+
+  PB_free(buf);
 
   return ret;
 }
 
 SMatF SM_from_pos_with(long n_rows, long n_cols, long n_vals, long *row_pos,
                        long *col_pos, float *vals) {
-  SMatF ret = SM_empty_from_pos(n_rows, n_cols, n_vals, row_pos, col_pos);
-  memcpy(ret.vals, vals, n_vals * sizeof(float));
+  check_size(n_rows, n_cols, n_vals);
+  SMatF ret = SM_empty(n_rows, n_cols, n_vals);
+  PosBuf buf = PB_with_size(n_vals);
+
+  for (long i = 0; i < n_vals; ++i) {
+    if (row_pos[i] < 0 || row_pos[i] >= n_rows) {
+      log_err("Row position %ld out of bounds for matrix with %ld rows.",
+              row_pos[i], n_rows);
+      exit(EXIT_FAILURE);
+    }
+
+    if (col_pos[i] < 0 || col_pos[i] >= n_cols) {
+      log_err("Column position %ld out of bounds for matrix with %ld columns.",
+              col_pos[i], n_cols);
+      exit(EXIT_FAILURE);
+    }
+
+    // increment corresponding row and column sizes
+    ++ret.col_sizes[col_pos[i]];
+    ++ret.row_sizes[row_pos[i]];
+    PB_push_val(&buf, row_pos[i], col_pos[i], vals[i]);
+  }
+
+  SM_init_start_arrs(ret);
+
+  qsort(buf.vals, n_vals, sizeof(SMEntry), SMEntry_comp_rm);
+  for (long i = 0; i < n_vals; ++i) {
+    ret.col_pos[i] = buf.vals[i].pos.col;
+    ret.vals[i] = buf.vals[i].val;
+  }
+
+  PB_free(buf);
+
   return ret;
 }
 
@@ -177,9 +283,10 @@ SMatF SM_empty_diag(long *diags, long n_diags, long size) {
           ((cur_diag >= 0) && (rc_idx + cur_diag < size))) { // diagonal above
         // row sizes
         ++ret.row_sizes[rc_idx];
+        const long row_pos = rc_idx + cur_diag;
 
         // set column of current value position
-        ret.col_pos[count_row] = rc_idx + cur_diag;
+        ret.col_pos[count_row] = row_pos;
         ++count_row;
       }
 
@@ -653,21 +760,6 @@ SMatF SM_jacobi(SMatF A, SMatF b, float rel_tol, long n_iter) {
   SM_free(err);
   SM_free(u_k1);
   return u_k;
-}
-
-typedef struct {
-  long x, y;
-} SMPos;
-
-int SMPos_comp(const void *lhs, const void *rhs) {
-  const SMPos l = *(SMPos *)lhs;
-  const SMPos r = *(SMPos *)rhs;
-
-  if (l.x == r.x) {
-    return l.y > r.y;
-  } else {
-    return l.x > r.x;
-  }
 }
 
 SMatF SM_transpose(SMatF A) {

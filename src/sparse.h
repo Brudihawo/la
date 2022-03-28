@@ -8,7 +8,6 @@
 typedef struct {
   long *col_sizes;  //< Number of elements in columns
   long *col_starts; //< Inidices to starts of cols (in col_idcs array)
-  long *row_pos;    //< Row positions of values in vals (in column-major order)
   long *col_pos;    //< Column positions of values in vals array
   float *vals;      //< Values present in matrix
   long *row_starts; //< Inidices to starts of rows (in vals/ cols array)
