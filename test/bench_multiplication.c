@@ -110,9 +110,8 @@ void matrix_product_time(long size, long nvals) {
 }
 
 int main(void) {
-  srand(69);
   fprintf(stderr, "# SIZE   MatF/s        SMatF/s       SMatF / MatF\n");
-  for (int order = 4; order < 11; ++order) {
+  for (int order = 4; order < 12; ++order) {
     const long size = (long)pow(2, order);
     const long nvals = size * 5;
 
