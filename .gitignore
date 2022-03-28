@@ -7,6 +7,10 @@ compile_commands.json
 test/*
 !test/*.[ch]
 
+# Ignore examples but not example source code
+examples/*
+!examples/*.[ch]
+
 coverage/*
 callgrind*
 
