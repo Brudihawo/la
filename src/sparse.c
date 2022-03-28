@@ -320,22 +320,19 @@ SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size) {
       ++col;
     }
   }
+
   return ret;
 }
 
-// TODO: check correctness
 bool SM_has_loc(SMatF A, long row, long col) {
   // Check if row is present in matrix
-  if (SM_ROW_EMPTY(A, row))
+  if (SM_ROW_EMPTY(A, row) || SM_COL_EMPTY(A, col))
     return false;
 
   const long row_start = A.row_starts[row];
   for (long i = 0; i < A.row_sizes[row]; i++) {
     if (A.col_pos[row_start + i] == col)
       return true;
-
-    if (A.col_pos[row_start + i] > col)
-      return false;
   }
   return false;
 }
@@ -444,7 +441,7 @@ long SM_col(SMatF A, long row, long col_idx) {
 }
 
 long SM_col_or_panic(SMatF A, long row, long col_idx) {
-  long col = SM_col(A, row, col_idx); // column in target
+  const long col = SM_col(A, row, col_idx); // column in target
   assert(col != SM_NOT_PRESENT && col > -1 && "Bug in row->column-iteration");
   return col;
 }
@@ -452,13 +449,13 @@ long SM_col_or_panic(SMatF A, long row, long col_idx) {
 float *SM_ptr(SMatF A, long row, long col) {
   assert(row < A.nrows && col < A.ncols && "Position out of bounds");
 
-  long idx = SM_idx(A, row, col);
+  const long idx = SM_idx(A, row, col);
   return idx == SM_NOT_PRESENT ? NULL : &A.vals[idx];
 }
 
 float *SM_ptr_or_panic(SMatF A, long row, long col) {
   assert(row < A.nrows && col < A.ncols && "Position out of bounds");
-  long idx = SM_idx(A, row, col);
+  const long idx = SM_idx(A, row, col);
   assert(idx != SM_NOT_PRESENT &&
          "Can only get pointer to non-zero type element in SMatF");
   return &A.vals[idx];
@@ -559,6 +556,9 @@ void SM_scl_inplace(SMatF A, float s) {
 SMatF SM_prod_prepare(SMatF A, SMatF B) {
   assert((A.ncols == B.nrows) && "Size mismatch, needs a.cols == b.rows.");
 
+  long tmp_buf_init_cap = (A.nvals + B.nvals) * 2;
+  RSBufL col_pos = RSBL_with_size(tmp_buf_init_cap);
+
   SMatF ret = {
       .nrows = A.nrows,
       .ncols = B.ncols,
@@ -574,20 +574,20 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
 
   // get memory requirements
   for (long t_row = 0; t_row < ret.nrows; t_row++) {
-    for (long t_col = 0; t_col < ret.ncols;
-         t_col++) { // iterate on row, column in target
+    for (long t_col = 0; t_col < ret.ncols; t_col++) {
+      // iterate on row, column in target
       for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
         // Test idx in A and B for column / row respectively
-        long idx = SM_col(A, t_row, test_idx);
-        if (idx == SM_NOT_PRESENT)
+        long a_col = SM_col(A, t_row, test_idx);
+        if (a_col == SM_NOT_PRESENT)
           continue;
 
-        if (SM_has_loc(A, t_row, SM_col_or_panic(A, t_row, test_idx)) &&
-            SM_has_loc(B, SM_col_or_panic(A, t_row, test_idx), t_col)) {
-          ret.nvals++;
-          ret.col_sizes[t_col]++;
-          ret.row_sizes[t_row]++;
+        if (SM_has_loc(B, a_col, t_col)) {
+          ++ret.nvals;
+          ++ret.col_sizes[t_col];
+          ++ret.row_sizes[t_row];
 
+          RSBL_push_val(&col_pos, t_col);
           break;
         }
       }
@@ -597,26 +597,12 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
   // Set row / column starts
   SM_init_start_arrs(ret);
 
-  // allocate memory
+  // allocate value array memory
   ret.vals = malloc(ret.nvals * sizeof(float));
-  ret.col_pos = malloc(ret.nvals * sizeof(long));
 
-  // set positions for row-wise iteration, general manipulation
-  long cur_idx = 0;
-  for (long t_row = 0; t_row < ret.nrows; t_row++) {
-    for (long t_col = 0; t_col < ret.ncols;
-         t_col++) { // iterate on row, column in target
-      for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
-        // Test idx in A and B for column / row respectively
-        const long test_pos = SM_col_or_panic(A, t_row, test_idx);
-        if (SM_has_loc(A, t_row, test_pos) && SM_has_loc(B, test_pos, t_col)) {
-          ret.col_pos[cur_idx] = t_col;
-          cur_idx++;
-          break;
-        }
-      }
-    }
-  }
+  // Downsize col_pos array
+  assert(ret.nvals == col_pos.size);
+  ret.col_pos = realloc(col_pos.vals, ret.nvals * sizeof(long));
 
   return ret;
 }
