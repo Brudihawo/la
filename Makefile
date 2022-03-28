@@ -33,8 +33,12 @@ else
 	VERB_FLAG = -DVERB_LEVEL=VERB_WRN
 endif
 
-ifeq ("$(NOVERBOSE)", "true") 
+ifeq ("$(VERBOSE)", "ERROR") 
 	VERB_FLAG = -DVERB_LEVEL=VERB_ERR
+else ifeq ("$(VERBOSE)", "WARN")
+	VERB_FLAG = -DVERB_LEVEL=VERB_WRN
+else ifeq ("$(VERBOSE)", "DEBUG")
+	VERB_FLAG = -DVERB_LEVEL=VERB_DBG
 endif
 
 ifeq ("$(SANITIZE)", "true")
