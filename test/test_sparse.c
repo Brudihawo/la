@@ -115,10 +115,15 @@ void test_random_pos_prod() {
 
   SM_prod(A, identity, target);
 
-  if (SM_eq(A, target))
-    TEST_PASS("Random matrix product with identity");
+  if (SM_structure_eq(A, target))
+    TEST_PASS("Random matrix product with identity - Structural equality");
   else
-    TEST_FAIL("Random matrix product with identity");
+    TEST_FAIL("Random matrix product with identity - Structural equality");
+
+  if (SM_eq(A, target))
+    TEST_PASS("Random matrix product with identity - Value equality");
+  else
+    TEST_FAIL("Random matrix product with identity - Value equality");
 
   SM_free(A);
   SM_free(identity);
