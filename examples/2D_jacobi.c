@@ -4,16 +4,16 @@
 #include "sparse.h"
 #include "stdlib.h"
 
-#define FIELD_SIZE 100
-#define V_X 2.0f
-#define V_Y -2.0f
-#define ALPHA 10.0f
+#define FIELD_SIZE 400
+#define V_X 0.0f
+#define V_Y -1.0f
+#define ALPHA 4.0f
 #define DELTA_X 1.0f
 #define DELTA_Y 1.0f
 
 #define PI 3.14159265359
 
-#define FREQ 2.0f
+#define FREQ 8.0f
 
 #define IDX(row, col) (row) * FIELD_SIZE + (col)
 
@@ -31,7 +31,9 @@
  */
 
 int main(void) {
+  fprintf(stderr, "Initialising Matrices...\n");
   // Values to insert into matrix
+  // b_2 0 ... 0 b_1 a c_1 0 ... 0 c_2
   const float a =
       -2.0f * ALPHA / (DELTA_X * DELTA_X) - 2.0f * ALPHA / (DELTA_Y * DELTA_Y);
   const float b_1 = ALPHA / (DELTA_X * DELTA_X) + V_X / (2.0f * DELTA_X);
@@ -41,13 +43,16 @@ int main(void) {
 
   SMatF mat = SM_empty_diag((long[5]){-FIELD_SIZE, -1, 0, 1, FIELD_SIZE}, 5,
                             FIELD_SIZE * FIELD_SIZE);
+  fprintf(stderr, "Done creating mat\n");
 
   SMatF field = SM_vec_empty(FIELD_SIZE * FIELD_SIZE);
+  fprintf(stderr, "Done creating field\n");
 
   // Boundary Conditions in system of equations
   for (long i = 0; i < FIELD_SIZE * FIELD_SIZE; i++) {
     SM_set_or_panic(mat, i, i, 1.0f);
   }
+  fprintf(stderr, "Done setting boundary in mat\n");
 
   long *bound_x = malloc(4 * (FIELD_SIZE - 1) * sizeof(long));
   long *bound_y = malloc(4 * (FIELD_SIZE - 1) * sizeof(long));
@@ -80,6 +85,7 @@ int main(void) {
         rhs, IDX(bound_x[i], bound_y[i]), 0,
         (1.0f + sinf(FREQ * 2.0f * PI / (4.0f * (FIELD_SIZE - 1)) * (float)i)) / 2.0);
   }
+  fprintf(stderr, "Done setting boundary in rhs\n");
 
   for (long i = 1; i < FIELD_SIZE - 1; i++) {   // row
     for (long j = 1; j < FIELD_SIZE - 1; j++) { // column
@@ -90,8 +96,9 @@ int main(void) {
       SM_set_or_panic(mat, IDX(i, j), IDX(i + 1, j), c_1);
     }
   }
+  fprintf(stderr, "Done initialising A\n");
 
-  SMatF result = SM_jacobi(mat, rhs, 0.00001f, 10000, 0.9999f);
+  SMatF result = SM_jacobi(mat, rhs, 0.001f, 100000);
   for (long i = 0; i < FIELD_SIZE; i++) {
     for (long j = 0; j < FIELD_SIZE; j++) {
       printf("%ld %ld %7.4f\n", i, j, SM_at(result, IDX(i, j), 0));
@@ -100,6 +107,7 @@ int main(void) {
 
   free(bound_x);
   free(bound_y);
+  SM_free(result);
   SM_free(mat);
   SM_free(rhs);
   SM_free(field);
