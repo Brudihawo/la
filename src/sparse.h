@@ -386,6 +386,16 @@ void SM_back_sub(SMatF tri_up, SMatF b, SMatF target);
  */
 void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target);
 
+/* @brief compute solution to A target = b with successive overrelaxation
+ *
+ * @param A coefficient matrix for system of equations
+ * @param b solution vector
+ * @param or over relaxation factor (set to 1 for Gauss-Seidel iteration)
+ * @param rel_err error tolerance
+ * @param n_iter maximum number of iterations
+ */
+SMatF SM_sor(SMatF A, SMatF b, float or, float rel_err, long n_iter);
+
 /* @brief Compute largest Eigenvector of A using vector iteration
  *
  * @param A matrix for EV computation
