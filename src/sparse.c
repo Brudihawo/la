@@ -1069,18 +1069,31 @@ void SM_back_sub(SMatF tri_up, SMatF b, SMatF target) {
   }
 
   SM_set_or_panic(target, target.nrows - 1, 0,
-                  b.vals[b.nrows - 1] /
+                  SM_at(b, b.nrows - 1, 0) /
                       SM_at(tri_up, tri_up.nrows - 1, tri_up.ncols - 1));
+
   for (long row = b.nrows - 2; row >= 0; --row) {
+    if (SM_ROW_EMPTY(tri_up, row)) {
+      log_err("Division by zero because of zero-row in tri_up (%ld)", row);
+      exit(EXIT_FAILURE);
+    }
+
     SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
 
-    for (long col_i = row + 1; col_i < tri_up.row_sizes[row]; ++col_i) {
+    for (long col_i = tri_up.row_sizes[row] - 1; col_i >= 0; --col_i) {
       const long col = SM_col(tri_up, row, col_i);
+      if (col == row)
+        continue;
 
       *SM_ptr_or_panic(target, row, 0) -=
-          SM_at(target, row, 0) * SM_at(tri_up, row, col);
+          SM_at(target, col, 0) * SM_at(tri_up, row, col);
     }
-    *SM_ptr_or_panic(target, row, 0) /= SM_at(tri_up, row, row);
+    float ann = SM_at(tri_up, row, row);
+    if (fabs(ann) < 0.0000001f) {
+      log_wrn("Division by very small number in backward substitution. This "
+              "might lead to unexpected results");
+    }
+    *SM_ptr_or_panic(target, row, 0) /= ann;
   }
 }
 
@@ -1109,13 +1122,20 @@ void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target) {
   for (long row = 1; row < b.nrows; row++) {
     SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
 
-    for (long col_i = tri_lo.row_sizes[row] - 1; col_i >= 0; --col_i) {
+    for (long col_i = 0; col_i < tri_lo.row_sizes[row]; ++col_i) {
       const long col = SM_col(tri_lo, row, col_i);
+      if (row == col) continue;
 
       *SM_ptr_or_panic(target, row, 0) -=
-          SM_at(target, row, 0) * SM_at(tri_lo, row, col);
+          SM_at(target, col, 0) * SM_at(tri_lo, row, col);
     }
-    *SM_ptr_or_panic(target, row, 0) /= SM_at(tri_lo, row, row);
+
+    float ann = SM_at(tri_lo, row, row);
+    if (fabs(ann) < 0.0000001f) {
+      log_wrn("Division by very small number in backward substitution. This "
+              "might lead to unexpected results");
+    }
+    *SM_ptr_or_panic(target, row, 0) /= ann;
   }
 }
 
