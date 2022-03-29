@@ -915,7 +915,6 @@ SMatF SM_subset_diag(SMatF A) {
     SM_set_or_panic(ret, pos, pos, SM_at(A, pos, pos));
   }
 
-
   RSBL_free(elements);
   return ret;
 }
@@ -933,8 +932,10 @@ SMatF SM_subset_trilo(SMatF A, bool diag) {
   for (long row = 0; row < A.nrows; ++row) {
     for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
       const long col = SM_col(A, row, col_i);
-      if (diag && row < col) continue;
-      if (!diag && row <= col) continue;
+      if (diag && row < col)
+        continue;
+      if (!diag && row <= col)
+        continue;
 
       PB_push_val(&elements, row, col, SM_at(A, row, col));
     }
@@ -976,8 +977,10 @@ SMatF SM_subset_triup(SMatF A, bool diag) {
   for (long row = 0; row < A.nrows; ++row) {
     for (long col_i = 0; col_i < A.row_sizes[row]; ++col_i) {
       const long col = SM_col(A, row, col_i);
-      if (diag && row > col) continue;
-      if (!diag && row >= col) continue;
+      if (diag && row > col)
+        continue;
+      if (!diag && row >= col)
+        continue;
 
       PB_push_val(&elements, row, col, SM_at(A, row, col));
     }
