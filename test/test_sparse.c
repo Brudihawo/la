@@ -476,7 +476,7 @@ void test_back_sub() {
   SM_sub(b, b1, err);
 
   float err_abs = SM_abs(err);
-  if (!almost_eq(err_abs, 0.0f)) {
+  if (err_abs > 0.0001f) {
     TEST_FAIL_MSG("Backward substitution", "Error too large: %f", err_abs);
   } else {
     TEST_PASS("Backward substitution");
@@ -506,7 +506,7 @@ void test_forw_sub() {
   SM_sub(b, b1, err);
 
   float err_abs = SM_abs(err);
-  if (!almost_eq(err_abs, 0.0f)) {
+  if (err_abs > 0.0001f) {
     TEST_FAIL_MSG("Forward substitution", "Error too large: %f", err_abs);
   } else {
     TEST_PASS("Forward substitution");
