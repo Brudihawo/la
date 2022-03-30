@@ -68,7 +68,7 @@ $(examples): %: %.c $(SRCDIR)/la.a
 	@$(ECHO) $@
 	$(CC) $< $(SRCDIR)/la.a -o $@ $(CFLAGS) $(LIBS) -I$(SRCDIR)
 
-test: $(tests)
+test: $(tests) $(TESTDIR)/test_util.h
 
 runtest: test
 	./run_tests.sh $(TESTDIR)

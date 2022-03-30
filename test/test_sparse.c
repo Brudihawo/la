@@ -59,7 +59,7 @@ SMatF gen_random(long n_vals, long n_rows, long n_cols) {
   return ret;
 }
 
-void test_init_from_pos_with() {
+bool test_init_from_pos_with(void) {
   float *vals = malloc(N_VALS * sizeof(float));
   long *pos_row = malloc(N_VALS * sizeof(long));
   long *pos_col = malloc(N_VALS * sizeof(long));
@@ -70,7 +70,7 @@ void test_init_from_pos_with() {
 
   SMatF A = SM_from_pos_with(nrows, ncols, N_VALS, pos_row, pos_col, vals);
 
-  bool fail = false;
+  bool pass = true;
   long idx = 0;
   for (long row = 0; row < A.nrows; ++row) {
     for (long col = 0; col < A.ncols; ++col) {
@@ -78,14 +78,14 @@ void test_init_from_pos_with() {
         if (SM_at(A, row, col) != vals[idx]) {
           TEST_FAIL_MSG("Initialisation from positions",
                         "Wrong value at index %ld", idx);
-          fail = true;
+          pass = false;
         }
         ++idx;
       } else {
         if (SM_at(A, row, col) != 0.0f) {
           TEST_FAIL_MSG("Initialisation from positions",
                         "Nonzero Value at (%ld, %ld)", row, col);
-          fail = true;
+          pass = false;
         }
       }
     }
@@ -95,7 +95,7 @@ void test_init_from_pos_with() {
     TEST_FAIL_MSG("Initialisation from positions",
                   "Number of values is wrong%s", "");
   } else {
-    if (!fail)
+    if (pass)
       TEST_PASS("Initialisation from positions");
   }
 
@@ -103,11 +103,12 @@ void test_init_from_pos_with() {
   free(pos_row);
   free(pos_col);
   SM_free(A);
+  return pass;
 }
 
 // Test matrix product of random matrix with identity. If result and input
 // matrix are identical, the product should be working correctly.
-void test_random_pos_prod() {
+bool test_random_pos_prod(void) {
   SMatF identity = SM_diag_regular((long[1]){0}, (float[1]){1.0f}, 1, SIZE);
 
   SMatF A = gen_random(N_VALS, SIZE, SIZE);
@@ -115,22 +116,28 @@ void test_random_pos_prod() {
 
   SM_prod(A, identity, target);
 
+  bool pass = true;
   if (SM_structure_eq(A, target))
     TEST_PASS("Random matrix product with identity - Structural equality");
-  else
+  else {
     TEST_FAIL("Random matrix product with identity - Structural equality");
+    pass = false;
+  }
 
   if (SM_eq(A, target))
     TEST_PASS("Random matrix product with identity - Value equality");
-  else
+  else {
     TEST_FAIL("Random matrix product with identity - Value equality");
+    pass = false;
+  }
 
   SM_free(A);
   SM_free(identity);
   SM_free(target);
+  return pass;
 }
 
-void test_random_pos_dif_sizes_prod_ver_matf() {
+bool test_random_pos_dif_sizes_prod_ver_matf(void) {
   float *values_A = malloc(N_VALS * sizeof(float));
   long *row_pos_A = malloc(N_VALS * sizeof(long));
   long *col_pos_A = malloc(N_VALS * sizeof(long));
@@ -166,18 +173,18 @@ void test_random_pos_dif_sizes_prod_ver_matf() {
 
   MF_prod(m_A, m_B, m_T);
 
-  bool fail = false;
-  for (long row = 0; row < m_T.rows && !fail; ++row) {
-    for (long col = 0; col < m_T.cols && !fail; ++col) {
+  bool pass = true;
+  for (long row = 0; row < m_T.rows && pass; ++row) {
+    for (long col = 0; col < m_T.cols && pass; ++col) {
       if (SM_at(s_T, row, col) != MF_AT(m_T, row, col)) {
         TEST_FAIL_MSG("Matrix multiplication verified with MatF",
                       "Mismatch at (%ld, %ld)", row, col);
-        fail = true;
+        pass = false;
       }
     }
   }
 
-  if (!fail)
+  if (pass)
     TEST_PASS("Matrix multiplication verified with MatF");
 
   SM_free(s_A);
@@ -194,9 +201,10 @@ void test_random_pos_dif_sizes_prod_ver_matf() {
   free(row_pos_B);
   free(col_pos_A);
   free(col_pos_B);
+  return pass;
 }
 
-void test_tridiag_vec_prod() {
+bool test_tridiag_vec_prod(void) {
   SMatF tridiag =
       SM_diag_regular((long[N_DIAGS]){-1, 0, 1},
                       (float[N_DIAGS]){1.0f, 2.0f, 3.0f}, N_DIAGS, SIZE);
@@ -214,18 +222,18 @@ void test_tridiag_vec_prod() {
 
   SM_prod(tridiag, vec, res);
 
-  bool fail = false;
+  bool pass = true;
   long failed_at = -1;
   float expected;
   for (long i = 0; i < SIZE; ++i) {
     if (i > 2 && i < 6) {
       if (SM_at(res, i, 0) != (float)(6 - i)) {
-        fail = true;
         expected = (float)(6 - i);
         TEST_FAIL_MSG(
             "Matrix vector multiplication",
             "Unexpected value in output at position %ld: %.2f. Expected %.2f.",
             failed_at, SM_at(vec, i, 0), expected);
+        pass = false;
         break;
       }
     } else {
@@ -237,51 +245,60 @@ void test_tridiag_vec_prod() {
             "Matrix vector multiplication",
             "Unexpected value in output at position %ld: %.2f. Expected %.2f.",
             failed_at, SM_at(vec, i, 0), expected);
-        fail = true;
+        pass = false;
       }
     }
   }
 
-  if (!fail)
+  if (pass)
     TEST_PASS("Matrix vector multiplication");
 
   SM_free(vec);
   SM_free(tridiag);
   SM_free(res);
+  return pass;
 }
 
-void test_equality_self() {
+bool test_equality_self(void) {
   const SMatF A = gen_random(N_VALS, SIZE, SIZE);
 
+  bool pass = true;
   if (SM_eq(A, A))
     TEST_PASS("Random matrix self equality");
-  else
+  else {
     TEST_FAIL("Random matrix self equality");
+    pass = false;
+  }
 
   SM_free(A);
+  return pass;
 }
 
-void test_structure_equality_self() {
+bool test_structure_equality_self(void) {
   const SMatF A = gen_random(N_VALS, SIZE, SIZE);
-
+  
+  bool pass = true;
   if (SM_structure_eq(A, A))
     TEST_PASS("Random structural self equality");
-  else
+  else {
     TEST_FAIL("Random structureal self equality");
+    pass = false;
+  }
 
   SM_free(A);
+  return pass;
 }
 
-void test_add_sub_random() {
+bool test_add_sub_random(void) {
   SMatF A = gen_random(N_VALS, SIZE, SIZE);
   SMatF B = gen_random(N_VALS, SIZE, SIZE);
 
   SMatF target = SM_addsub_prepare(A, B);
   SM_add(A, B, target);
 
-  bool fail = false;
-  for (long row = 0; row < SIZE && !fail; ++row) {
-    for (long col = 0; col < SIZE && !fail; ++col) {
+  bool pass = true;
+  for (long row = 0; row < SIZE && pass; ++row) {
+    for (long col = 0; col < SIZE && pass; ++col) {
       float t = SM_at(target, row, col);
       float a = SM_at(A, row, col);
       float b = SM_at(B, row, col);
@@ -289,19 +306,18 @@ void test_add_sub_random() {
       if (t != a + b) {
         TEST_FAIL_MSG("Matrix Addition", "Failed at (%ld, %ld) (%f + %f != %f)",
                       row, col, a, b, t);
-        fail = true;
+        pass = false;
       }
     }
   }
 
-  if (!fail)
+  if (pass)
     TEST_PASS("Matrix Addition");
 
   SM_sub(A, B, target);
 
-  fail = false;
-  for (long row = 0; row < SIZE && !fail; ++row) {
-    for (long col = 0; col < SIZE && !fail; ++col) {
+  for (long row = 0; row < SIZE && pass; ++row) {
+    for (long col = 0; col < SIZE && pass; ++col) {
       float t = SM_at(target, row, col);
       float a = SM_at(A, row, col);
       float b = SM_at(B, row, col);
@@ -310,41 +326,41 @@ void test_add_sub_random() {
         TEST_FAIL_MSG("Matrix Subtraction",
                       "Failed at (%ld, %ld) (%f - %f != %f)", row, col, a, b,
                       t);
-        fail = true;
+        pass = false;
       }
     }
   }
 
-  if (!fail)
+  if (pass)
     TEST_PASS("Matrix Subtraction");
 
   float scale_fac = rand_float() * 10.0f;
   SMatF target2 = SM_empty_like(A);
   SM_scl(A, scale_fac, target2);
 
-  fail = false;
-  for (long row = 0; row < SIZE && !fail; ++row) {
-    for (long col = 0; col < SIZE && !fail; ++col) {
+  for (long row = 0; row < SIZE && pass; ++row) {
+    for (long col = 0; col < SIZE && pass; ++col) {
       float t = SM_at(target2, row, col);
       float a = SM_at(A, row, col);
 
       if (t != a * scale_fac) {
         TEST_FAIL_MSG("Matrix Scaling", "Failed at (%ld, %ld) (%f * %f != %f)",
                       row, col, a, scale_fac, t);
-        fail = true;
+        pass = false;
       }
     }
   }
-  if (!fail)
+  if (pass)
     TEST_PASS("Matrix Scaling");
 
   SM_free(A);
   SM_free(B);
   SM_free(target);
   SM_free(target2);
+  return pass;
 }
 
-void test_transpose() {
+bool test_transpose(void) {
   float *values = malloc(N_VALS * sizeof(float));
   long *row_pos = malloc(N_VALS * sizeof(long));
   long *col_pos = malloc(N_VALS * sizeof(long));
@@ -356,13 +372,13 @@ void test_transpose() {
 
   SMatF T = SM_transpose(A);
 
-  bool fail = false;
-  for (long i = 0; i < A.nrows && !fail; ++i) {
-    for (long j = 0; j < A.ncols && !fail; ++j) {
+  bool pass = true;
+  for (long i = 0; i < A.nrows && pass; ++i) {
+    for (long j = 0; j < A.ncols && pass; ++j) {
       const float a = SM_at(A, i, j);
       const float t = SM_at(T, j, i);
       if (a != t) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG(
             "Matrix Transposition",
             "Value at (%ld, %ld) in A does not equal value at (%ld, %ld) "
@@ -372,18 +388,17 @@ void test_transpose() {
     }
   }
 
-  if (!fail)
+  if (pass)
     TEST_PASS_MSG("Matrix Transposition", "Value Equality passed%s", "");
 
   SMatF TT = SM_transpose(T);
 
-  fail = !SM_eq(A, TT) || fail;
-
-  if (!fail) {
+  if (SM_eq(A, TT)) {
     TEST_PASS("Matrix Transposition");
   } else {
     TEST_FAIL_MSG("Matrix Transposition",
                   "Double does not equal original Matrix %s", "");
+    pass = false;
   }
 
   SM_free(A);
@@ -392,9 +407,10 @@ void test_transpose() {
   free(values);
   free(row_pos);
   free(col_pos);
+  return pass;
 }
 
-void test_scalar_prod_self() {
+bool test_scalar_prod_self(void) {
   SMatF vec = SM_vec_empty(SIZE);
   for (long i = 0; i < vec.nvals; ++i) {
     vec.vals[i] = rand_float();
@@ -407,15 +423,18 @@ void test_scalar_prod_self() {
     tst += vec.vals[i] * vec.vals[i];
   }
 
-  if (tst != abs2)
+  bool pass = true;
+  if (tst != abs2) {
     TEST_FAIL("Scalar Product");
-  else
+    pass = false;
+  } else
     TEST_PASS("Scalar Product");
 
   SM_free(vec);
+  return pass;
 }
 
-void test_energy_norm_identity() {
+bool test_energy_norm_identity(void) {
   SMatF vec = SM_vec_empty(SIZE);
   for (long i = 0; i < vec.nvals; ++i) {
     vec.vals[i] = rand_float();
@@ -425,25 +444,30 @@ void test_energy_norm_identity() {
 
   SMatF identity = SM_diag_regular((long[1]){0}, (float[1]){1.0f}, 1, SIZE);
   float ret = SM_energy_norm(identity, vec, NULL);
+  bool pass = true;
   if (almost_eq(ret, tst)) {
     TEST_PASS("Energy Norm test with identity");
   } else {
     TEST_FAIL("Energy Norm test with identity");
+    pass = false;
   }
   SM_free(identity);
   SM_free(vec);
+  return pass;
 }
 
-void test_is_triup() {
+bool test_is_triup(void) {
   SMatF is_triup = SM_diag_regular((long[3]){0, 1, 2},
                                    (float[3]){1.0f, -3.0f, 2.0f}, 3, SIZE);
 
   SMatF no_triup = SM_diag_regular((long[3]){-1, 0, 2},
                                    (float[3]){1.0f, -3.0f, 2.0f}, 3, SIZE);
 
+  bool pass = true;
   if (!SM_is_triup(is_triup, true)) {
     TEST_FAIL("Triangular upper matrix test (shouldn't be triup)");
     SM_print_nonzero(is_triup);
+    pass = false;
   } else {
     TEST_PASS("Triangular upper matrix test (shouldn't bee triup)");
   }
@@ -451,15 +475,17 @@ void test_is_triup() {
   if (SM_is_triup(no_triup, true)) {
     TEST_FAIL("Triangular upper matrix test (should be triup)");
     SM_print_nonzero(no_triup);
+    pass = false;
   } else {
     TEST_PASS("Triangular upper matrix test (should be triup)");
   }
 
   SM_free(is_triup);
   SM_free(no_triup);
+  return pass;
 }
 
-void test_back_sub() {
+bool test_back_sub(void) {
   SMatF b = SM_vec_empty(SIZE);
   for (long i = 0; i < b.nvals; ++i) {
     b.vals[i] = rand_float();
@@ -476,8 +502,10 @@ void test_back_sub() {
   SM_sub(b, b1, err);
 
   float err_abs = SM_abs(err);
+  bool pass = true;
   if (err_abs > 0.0001f) {
     TEST_FAIL_MSG("Backward substitution", "Error too large: %f", err_abs);
+    pass = false;
   } else {
     TEST_PASS("Backward substitution");
   }
@@ -487,9 +515,10 @@ void test_back_sub() {
   SM_free(b1);
   SM_free(err);
   SM_free(target);
+  return pass;
 }
 
-void test_forw_sub() {
+bool test_forw_sub(void) {
   SMatF b = SM_vec_empty(SIZE);
   for (long i = 0; i < b.nvals; ++i) {
     b.vals[i] = rand_float();
@@ -506,8 +535,10 @@ void test_forw_sub() {
   SM_sub(b, b1, err);
 
   float err_abs = SM_abs(err);
+  bool pass = true;
   if (err_abs > 0.0001f) {
     TEST_FAIL_MSG("Forward substitution", "Error too large: %f", err_abs);
+    pass = false;
   } else {
     TEST_PASS("Forward substitution");
   }
@@ -517,193 +548,207 @@ void test_forw_sub() {
   SM_free(b1);
   SM_free(err);
   SM_free(target);
+  return pass;
 }
 
-void test_subset_diag() {
+bool test_subset_diag(void) {
   SMatF A = gen_random(N_VALS, SIZE, SIZE);
   SMatF diag = SM_subset_diag(A);
 
-  bool fail = false;
-  for (long i = 0; i < A.ncols && !fail; ++i) {
+  bool pass = true;
+  for (long i = 0; i < A.ncols && pass; ++i) {
     float correct = SM_at(A, i, i);
     float found = SM_at(diag, i, i);
     if (correct != found) {
-      fail = true;
+      pass = false;
       TEST_FAIL_MSG("Subset diagonal - diagonal values",
                     "Unexpected value on diagonal (%ld: %f), expected %f", i,
                     found, correct);
     }
 
     if (SM_has_loc(A, i, i) && !SM_has_loc(diag, i, i)) {
-      fail = true;
+      pass = false;
       TEST_FAIL_MSG("Subset diagonal - diagonal values",
                     "Missing value at (%ld, %ld)", i, i);
     }
 
     if (!SM_has_loc(A, i, i) && SM_has_loc(diag, i, i)) {
-      fail = true;
+      pass = false;
       TEST_FAIL_MSG("Subset diagonal - diagonal values",
                     "Additional value at (%ld, %ld)", i, i);
     }
   }
 
-  if (!fail) {
+  if (pass) {
     TEST_PASS("Subset diagonal - diagonal values");
   }
 
-  fail = false;
-  for (long row = 0; row < A.nrows && !fail; ++row) {
-    for (long col = 0; col < A.ncols && !fail; ++col) {
+  for (long row = 0; row < A.nrows && pass; ++row) {
+    for (long col = 0; col < A.ncols && pass; ++col) {
       if (row == col)
         continue;
 
       if (SM_has_loc(diag, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset diagonal - off-diagonal values",
                       "Additional value at (%ld, %ld)", row, col);
       }
     }
   }
-  if (!fail)
+  if (pass)
     TEST_PASS("Subset diagonal - off-diagonal values");
 
   SM_free(A);
   SM_free(diag);
+  return pass;
 }
 
-void test_subset_trilo() {
+bool test_subset_trilo(void) {
   SMatF A = gen_random(N_VALS, SIZE, SIZE);
   bool use_diag = true;
   SMatF trilo = SM_subset_trilo(A, use_diag);
 
-  bool fail = false;
-  for (long row = 0; row < trilo.nrows && !fail; ++row) {
-    for (long col = 0; col < trilo.ncols && !fail; ++col) {
-      if (use_diag && col > row) continue;
-      if (!use_diag && col >= row) continue;
+  bool pass = true;
+  for (long row = 0; row < trilo.nrows && pass; ++row) {
+    for (long col = 0; col < trilo.ncols && pass; ++col) {
+      if (use_diag && col > row)
+        continue;
+      if (!use_diag && col >= row)
+        continue;
 
       float correct = SM_at(A, row, col);
       float found = SM_at(trilo, row, col);
       if (correct != found) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset trilo - triangular lower values",
-                      "Unexpected value on at (%ld, %ld: %f), expected %f", row, col,
-                      found, correct);
+                      "Unexpected value on at (%ld, %ld: %f), expected %f", row,
+                      col, found, correct);
       }
 
       if (SM_has_loc(A, row, col) && !SM_has_loc(trilo, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset trilo - triangular lower values",
                       "Missing value at (%ld, %ld)", row, col);
       }
 
       if (!SM_has_loc(A, row, col) && SM_has_loc(trilo, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset trilo - triangular lower values",
                       "Additional value at (%ld, %ld)", row, col);
       }
     }
   }
 
-  if (!fail) {
+  if (pass) {
     TEST_PASS("Subset trilo - triangular lower values");
   }
 
-  fail = false;
-  for (long row = 0; row < A.nrows && !fail; ++row) {
-    for (long col = 0; col < A.ncols && !fail; ++col) {
-      if (use_diag && col <= row) continue;
-      if (!use_diag && col < row) continue;
+  for (long row = 0; row < A.nrows && pass; ++row) {
+    for (long col = 0; col < A.ncols && pass; ++col) {
+      if (use_diag && col <= row)
+        continue;
+      if (!use_diag && col < row)
+        continue;
 
       if (SM_has_loc(trilo, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset trilo - upper values",
                       "Additional value at (%ld, %ld)", row, col);
       }
     }
   }
-  if (!fail)
+  if (pass)
     TEST_PASS("Subset trilo - upper values");
 
   SM_free(A);
   SM_free(trilo);
+  return pass;
 }
 
-void test_subset_triup() {
+bool test_subset_triup(void) {
   SMatF A = gen_random(N_VALS, SIZE, SIZE);
   bool use_diag = true;
   SMatF triup = SM_subset_triup(A, use_diag);
 
-  bool fail = false;
-  for (long row = 0; row < triup.nrows && !fail; ++row) {
-    for (long col = 0; col < triup.ncols && !fail; ++col) {
-      if (use_diag && col < row) continue;
-      if (!use_diag && col <= row) continue;
+  bool pass = true;
+  for (long row = 0; row < triup.nrows && pass; ++row) {
+    for (long col = 0; col < triup.ncols && pass; ++col) {
+      if (use_diag && col < row)
+        continue;
+      if (!use_diag && col <= row)
+        continue;
 
       float correct = SM_at(A, row, col);
       float found = SM_at(triup, row, col);
       if (correct != found) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset triup - triangular upper values",
-                      "Unexpected value on at (%ld, %ld: %f), expected %f", row, col,
-                      found, correct);
+                      "Unexpected value on at (%ld, %ld: %f), expected %f", row,
+                      col, found, correct);
       }
 
       if (SM_has_loc(A, row, col) && !SM_has_loc(triup, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset triup - triangular upper values",
                       "Missing value at (%ld, %ld)", row, col);
       }
 
       if (!SM_has_loc(A, row, col) && SM_has_loc(triup, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset triup - triangular upper values",
                       "Additional value at (%ld, %ld)", row, col);
       }
     }
   }
 
-  if (!fail) {
+  if (pass) {
     TEST_PASS("Subset triup - triangular upper values");
   }
 
-  fail = false;
-  for (long row = 0; row < A.nrows && !fail; ++row) {
-    for (long col = 0; col < A.ncols && !fail; ++col) {
-      if (use_diag && col >= row) continue;
-      if (!use_diag && col > row) continue;
+  for (long row = 0; row < A.nrows && pass; ++row) {
+    for (long col = 0; col < A.ncols && pass; ++col) {
+      if (use_diag && col >= row)
+        continue;
+      if (!use_diag && col > row)
+        continue;
 
       if (SM_has_loc(triup, row, col)) {
-        fail = true;
+        pass = false;
         TEST_FAIL_MSG("Subset triup - triangular lower values",
                       "Additional value at (%ld, %ld)", row, col);
       }
     }
   }
-  if (!fail)
+  if (pass)
     TEST_PASS("Subset triup - triangular lower values");
 
   SM_free(A);
   SM_free(triup);
+  return pass;
 }
 
 int main(void) {
   srand(69);
-  test_init_from_pos_with();
-  test_structure_equality_self();
-  test_equality_self();
-  test_random_pos_prod();
-  test_random_pos_dif_sizes_prod_ver_matf();
-  test_tridiag_vec_prod();
-  test_add_sub_random();
-  test_transpose();
-  test_scalar_prod_self();
-  test_energy_norm_identity();
-  test_is_triup();
-  test_back_sub();
-  test_forw_sub();
-  test_subset_diag();
-  test_subset_trilo();
-  test_subset_triup();
+  test_func funcs[] = {
+    test_init_from_pos_with,
+    test_structure_equality_self,
+    test_equality_self,
+    test_random_pos_prod,
+    test_random_pos_dif_sizes_prod_ver_matf,
+    test_tridiag_vec_prod,
+    test_add_sub_random,
+    test_transpose,
+    test_scalar_prod_self,
+    test_energy_norm_identity,
+    test_is_triup,
+    test_back_sub,
+    test_forw_sub,
+    test_subset_diag,
+    test_subset_trilo,
+    test_subset_triup,
+  };
+
+  run_tests(funcs);
+
   return EXIT_SUCCESS;
 }

@@ -38,37 +38,40 @@ void cleanup_test(MatF *A, MatF *A2, MatF *b, MatF *b2, MatF *u, MatF *c) {
   MF_FREE(*c);
 }
 
-#define pass_fail(c, b2, name) \
-if (MF_eq(c, b2)) { \
-	TEST_PASS(name); \
-} else { \
-	MatF tmp = MF_EMPTY_LIKE(c); \
-	MF_sub(b2, c, tmp); \
-\
-	TEST_FAIL_MSG(name, "Relative Error: %f (OK: %f)\n", \
-								VEC_abs(tmp) / VEC_abs(b2), REL_ERROR); \
-\
-	printf("Expected A * u:\n"); \
-	MF_print(b2); \
-	printf("And got:\n"); \
-	MF_print(c); \
-\
-	MF_FREE(tmp); \
-} \
+#define pass_fail(c, b2, name, pass)                                           \
+  if (MF_eq(c, b2)) {                                                          \
+    TEST_PASS(name);                                                           \
+  } else {                                                                     \
+    MatF tmp = MF_EMPTY_LIKE(c);                                               \
+    MF_sub(b2, c, tmp);                                                        \
+                                                                               \
+    TEST_FAIL_MSG(name, "Relative Error: %f (OK: %f)\n",                       \
+                  VEC_abs(tmp) / VEC_abs(b2), REL_ERROR);                      \
+    pass = false;                                                              \
+                                                                               \
+    printf("Expected A * u:\n");                                               \
+    MF_print(b2);                                                              \
+    printf("And got:\n");                                                      \
+    MF_print(c);                                                               \
+                                                                               \
+    MF_FREE(tmp);                                                              \
+  }
 
-void test_gaussian_normal() {
+bool test_gaussian_normal(void) {
   MatF A, b, u, c, A2, b2;
   create_test_mfs(&A, &A2, &b, &b2, &u, &c);
 
   MF_gauss_elim(A, b, u); // A, b is changed
   MF_prod(A2, u, c);
 
-  pass_fail(c, b2, "gaussian normal");
+  bool pass = true;
+  pass_fail(c, b2, "gaussian normal", pass);
 
   cleanup_test(&A, &A2, &b, &b2, &u, &c);
+  return pass;
 }
 
-void test_gaussian_perm() {
+bool test_gaussian_perm(void) {
   MatF A, b, u, c, A2, b2;
   create_test_mfs(&A, &A2, &b, &b2, &u, &c);
   // modify A, A2
@@ -78,12 +81,14 @@ void test_gaussian_perm() {
   MF_gauss_elim(A, b, u); // A, b is changed
   MF_prod(A2, u, c);
 
-  pass_fail(c, b2, "gaussian permute");
+  bool pass = true;
+  pass_fail(c, b2, "gaussian permute", pass);
 
   cleanup_test(&A, &A2, &b, &b2, &u, &c);
+  return pass;
 }
 
-void test_lu_normal() {
+bool test_lu_normal(void) {
   MatF A, b, u, c, A2, b2;
   create_test_mfs(&A, &A2, &b, &b2, &u, &c);
 
@@ -91,14 +96,17 @@ void test_lu_normal() {
   MF_lu_solv(A, b, perms, u);
   MF_prod(A2, u, c);
 
-  pass_fail(c, b2, "lu normal");
+  bool pass = true;
+  pass_fail(c, b2, "lu normal", pass);
 
   if (perms != NULL)
     RP_free(perms);
   cleanup_test(&A, &A2, &b, &b2, &u, &c);
+
+  return pass;
 }
 
-void test_lu_perm() {
+bool test_lu_perm(void) {
   MatF A, b, u, c, A2, b2;
   create_test_mfs(&A, &A2, &b, &b2, &u, &c);
   // modify A, A2
@@ -109,21 +117,27 @@ void test_lu_perm() {
   MF_lu_solv(A, b, perms, u);
   MF_prod(A2, u, c);
 
-  pass_fail(c, b2, "lu normal");
+  bool pass = true;
+  pass_fail(c, b2, "lu normal", pass);
 
   if (perms != NULL) {
     RP_free(perms);
     free(perms);
   }
   cleanup_test(&A, &A2, &b, &b2, &u, &c);
+  return pass;
 }
 
 int main(void) {
   srand(69420);
 
-  // TODO: Write proper tests
-  test_gaussian_normal();
-  test_gaussian_perm();
-  test_lu_normal();
-  test_lu_perm();
+  // TODO: Write proper tests for MatF functions
+  test_func test_funcs[] = {
+    test_gaussian_normal,
+    test_gaussian_perm,
+    test_lu_normal,
+    test_lu_perm,
+  };
+
+  run_tests(test_funcs);
 }
