@@ -325,8 +325,14 @@ SMatF SM_diag_regular(long *diags, float *diag_vals, long n_diags, long size) {
 }
 
 bool SM_has_loc(SMatF A, long row, long col) {
+  if ((row >= A.nrows || col >= A.ncols) || (row < 0 || col < 0)) {
+    log_err("Position (%ld, %ld) out of bounds in Matrix of size (%ld, %ld).",
+            row, col, A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
   // Check if row is present in matrix
-  if (SM_ROW_EMPTY(A, row) || SM_COL_EMPTY(A, col))
+  if (SM_COL_EMPTY(A, col))
     return false;
 
   const long row_start = A.row_starts[row];
@@ -344,7 +350,7 @@ long SM_idx(SMatF A, long row, long col) {
     exit(EXIT_FAILURE);
   }
 
-  if (SM_ROW_EMPTY(A, row))
+  if (SM_COL_EMPTY(A, col))
     return SM_NOT_PRESENT;
 
   const long row_start = A.row_starts[row];
@@ -414,7 +420,7 @@ void SM_set_or_panic(SMatF A, long row, long col, float val) {
   A.vals[idx] = val;
 }
 
-float SM_at(SMatF A, long row, long col) {
+float SM_at(const SMatF A, long row, long col) {
   if (row >= A.nrows || col >= A.ncols) {
     log_err(
         "Position (%ld, %ld) is out of bounds for matrix of size (%ld, %ld)",
@@ -434,7 +440,7 @@ long SM_col(SMatF A, long row, long col_idx) {
     exit(EXIT_FAILURE);
   }
 
-  if (SM_ROW_EMPTY(A, row) || col_idx >= A.row_sizes[row])
+  if (A.row_sizes[row] <= col_idx)
     return SM_NOT_PRESENT;
 
   return A.col_pos[A.row_starts[row] + col_idx];
@@ -442,7 +448,10 @@ long SM_col(SMatF A, long row, long col_idx) {
 
 long SM_col_or_panic(SMatF A, long row, long col_idx) {
   const long col = SM_col(A, row, col_idx); // column in target
-  assert(col != SM_NOT_PRESENT && col > -1 && "Bug in row->column-iteration");
+  if (col < 0) {
+    log_err("Bug in row->column-iteration");
+    exit(EXIT_FAILURE);
+  }
   return col;
 }
 
@@ -565,44 +574,70 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
       .nvals = 0, // tbd
 
       .col_sizes = calloc(B.ncols, sizeof(long)),
-      .col_starts = malloc(B.ncols * sizeof(long)),
+      .col_starts = calloc(B.ncols, sizeof(long)),
       .col_pos = NULL,
       .vals = NULL,
-      .row_starts = malloc(A.nrows * sizeof(long)),
+      .row_starts = calloc(A.nrows, sizeof(long)),
       .row_sizes = calloc(A.nrows, sizeof(long)),
   };
 
   // get memory requirements
   for (long t_row = 0; t_row < ret.nrows; t_row++) {
-    for (long t_col = 0; t_col < ret.ncols; t_col++) {
-      // iterate on row, column in target
-      for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
-        // Test idx in A and B for column / row respectively
-        long a_col = SM_col(A, t_row, test_idx);
-        if (a_col == SM_NOT_PRESENT)
-          continue;
+    for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
+      const long a_col = SM_col(A, t_row, test_idx);
+      // we get a column index in a and iterate over the corresponding column in B
+      // then, we set all increment all appropriate sizes
+      // this will cause more values per row than we actually have
+      for (long t_col_i = 0; t_col_i < B.row_sizes[a_col]; t_col_i++) {
+        const long t_col = SM_col(B, a_col, t_col_i);
 
-        if (SM_has_loc(B, a_col, t_col)) {
-          ++ret.nvals;
-          ++ret.col_sizes[t_col];
-          ++ret.row_sizes[t_row];
+        ++ret.nvals;
+        ++ret.col_sizes[t_col];
+        ++ret.row_sizes[t_row];
 
-          RSBL_push_val(&col_pos, t_col);
-          break;
+        RSBL_push_val(&col_pos, t_col);
+      }
+    }
+  }
+
+  // Set row / colum starts with wrong row sizes so we can iterate more easily
+  SM_init_start_arrs(ret);
+  // remove duplicate columns that we got from position collection earlier
+  for (long row = 0; row < ret.nrows; ++row) {
+    if (ret.row_sizes[row] > 1) {
+      qsort(&col_pos.vals[ret.row_starts[row]], ret.row_sizes[row],
+            sizeof(long), &long_lt);
+
+      const long cur_row_size = ret.row_sizes[row];
+      for (long i = ret.row_starts[row] + 1;
+           i < ret.row_starts[row] + cur_row_size; ++i) {
+        if (col_pos.vals[i] == col_pos.vals[i - 1]) {
+          --ret.row_sizes[row];
+          --ret.col_sizes[col_pos.vals[i]];
+          --ret.nvals;
+
+          col_pos.vals[i - 1] = SM_NOT_PRESENT;
         }
       }
     }
   }
 
-  // Set row / column starts
+  ret.col_pos = malloc(ret.nvals * sizeof(long));
+  long count = 0;
+  for (long idx = 0; idx < col_pos.size; ++idx) {
+    if (col_pos.vals[idx] != SM_NOT_PRESENT) {
+      ret.col_pos[count] = col_pos.vals[idx];
+      ++count;
+    }
+  }
+
   SM_init_start_arrs(ret);
 
   // allocate value array memory
   ret.vals = malloc(ret.nvals * sizeof(float));
 
-  // Downsize col_pos array
-  assert(ret.nvals == col_pos.size);
-  ret.col_pos = realloc(col_pos.vals, ret.nvals * sizeof(long));
+  // free col_pos
+  RSBL_free(col_pos);
 
   return ret;
 }
@@ -613,7 +648,16 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   assert(target.nrows == A.nrows && "target.nrows == A.nrows");
   assert(target.ncols == B.ncols && "target.ncols == B.ncols");
 
+  long maxsize = 0;
+  for (long i = 0; i < A.nrows; ++i) {
+    if (A.row_sizes[i] > maxsize)
+      maxsize = A.row_sizes[i];
+  }
+  float *tmp_buf = malloc(maxsize * sizeof(float));
+
   for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
+    memcpy(tmp_buf, &A.vals[A.row_starts[t_row]],
+           A.row_sizes[t_row] * sizeof(float));
     for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
          t_col_i++) { // values in row of target (present columns' indices)
       const long t_col =
@@ -625,11 +669,12 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
 
         if (SM_has_loc(B, idx, t_col)) { // check if value is non-zero in b
           *SM_ptr_or_panic(target, t_row, t_col) +=
-              SM_at(A, t_row, idx) * SM_at(B, idx, t_col);
+              tmp_buf[a_col_i] * SM_at(B, idx, t_col);
         }
       }
     }
   }
+  free(tmp_buf);
 }
 
 void SM_prod_scl(SMatF A, SMatF B, float s, SMatF target) {

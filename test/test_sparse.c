@@ -1,5 +1,6 @@
 #include "stdbool.h"
 #include "stdio.h"
+#include "assert.h"
 
 #include "matf.h"
 #include "sparse.h"
@@ -7,17 +8,12 @@
 #include "test_util.h"
 
 #define N_DIAGS 3
-#define SIZE 10
-#define N_VALS 30
-
-int comp_long(const void *a, const void *b) {
-  const long va = *(long *)a;
-  const long vb = *(long *)b;
-  return va > vb;
-}
+#define SIZE 96
+#define N_VALS 5
 
 void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
                  long n_cols) {
+  assert(n_vals < n_rows * n_cols);
   long *idcs = malloc(n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
@@ -34,7 +30,7 @@ void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
       }
     }
   }
-  qsort(idcs, n_vals, sizeof(long), comp_long);
+  qsort(idcs, n_vals, sizeof(long), long_gt);
 
   for (long i = 0; i < n_vals; ++i) {
     cols[i] = idcs[i] % n_cols;
@@ -276,7 +272,7 @@ bool test_equality_self(void) {
 
 bool test_structure_equality_self(void) {
   const SMatF A = gen_random(N_VALS, SIZE, SIZE);
-  
+
   bool pass = true;
   if (SM_structure_eq(A, A))
     TEST_PASS("Random structural self equality");

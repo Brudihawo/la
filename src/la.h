@@ -22,4 +22,8 @@ bool almost_eq(float a, float b);
 
 float rand_float();
 
+int long_gt(const void *va, const void *vb);
+
+int long_lt(const void *va, const void *vb);
+
 #endif // LA_H

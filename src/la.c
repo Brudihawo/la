@@ -36,3 +36,12 @@ void RP_free(RowPerm *perms) {
 }
 
 float rand_float() { return (float)rand() / (float)RAND_MAX; }
+
+int long_gt(const void *va, const void *vb) {
+  return *(long *)va > *(long *)vb;
+}
+
+int long_lt(const void *va, const void *vb) {
+  return *(long *)va < *(long *)vb;
+}
+

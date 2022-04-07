@@ -5,12 +5,6 @@
 #include "stdlib.h"
 #include "time.h"
 
-int comp_long(const void *a, const void *b) {
-  const long va = *(long *)a;
-  const long vb = *(long *)b;
-  return va > vb;
-}
-
 void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
                  long n_cols) {
   long *idcs = malloc(n_vals * sizeof(long));
@@ -29,7 +23,7 @@ void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
       }
     }
   }
-  qsort(idcs, n_vals, sizeof(long), comp_long);
+  qsort(idcs, n_vals, sizeof(long), long_gt);
 
   for (long i = 0; i < n_vals; ++i) {
     cols[i] = idcs[i] % n_cols;
