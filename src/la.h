@@ -26,4 +26,8 @@ int long_gt(const void *va, const void *vb);
 
 int long_lt(const void *va, const void *vb);
 
+void radix_sort(long *arr, long size, long *tmp_arr);
+
+long binary_search(long *arr, long size, long val);
+
 #endif // LA_H

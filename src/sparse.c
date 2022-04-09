@@ -1,6 +1,7 @@
 #include "sparse.h"
 
 #include "assert.h"
+#include "limits.h"
 #include "log.h"
 #include "memory.h"
 #include "stdio.h"
@@ -336,11 +337,8 @@ bool SM_has_loc(SMatF A, long row, long col) {
     return false;
 
   const long row_start = A.row_starts[row];
-  for (long i = 0; i < A.row_sizes[row]; i++) {
-    if (A.col_pos[row_start + i] == col)
-      return true;
-  }
-  return false;
+  const long pos = binary_search(&A.col_pos[row_start], A.row_sizes[row], col);
+  return pos >= 0;
 }
 
 long SM_idx(SMatF A, long row, long col) {
@@ -350,15 +348,13 @@ long SM_idx(SMatF A, long row, long col) {
     exit(EXIT_FAILURE);
   }
 
+  // Check if row is present in matrix
   if (SM_COL_EMPTY(A, col))
     return SM_NOT_PRESENT;
 
   const long row_start = A.row_starts[row];
-  for (long i = 0; i < A.row_sizes[row]; i++) {
-    if (A.col_pos[row_start + i] == col)
-      return row_start + i;
-  }
-  return SM_NOT_PRESENT;
+  const long pos = binary_search(&A.col_pos[row_start], A.row_sizes[row], col);
+  return pos < 0 ? SM_NOT_PRESENT : row_start + pos;
 }
 
 bool SM_structure_eq(SMatF A, SMatF B) {
@@ -487,14 +483,15 @@ SMatF SM_addsub_prepare(SMatF A, SMatF B) {
     }
   }
 
+  // TODO: Optimize this
   SMatF ret = SM_empty(A.nrows, A.ncols, nvals);
   long cur_val_idx = 0;
   for (long row = 0; row < A.nrows; ++row) {   // rows in target
     for (long col = 0; col < B.ncols; ++col) { // columns in target
       if (SM_has_loc(A, row, col) || SM_has_loc(B, row, col)) {
-        ret.row_sizes[row] += 1;
-        ret.col_sizes[col] += 1;
         ret.col_pos[cur_val_idx] = col;
+        ++ret.row_sizes[row];
+        ++ret.col_sizes[col];
         ++cur_val_idx;
       }
     }
@@ -584,12 +581,12 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
   // get memory requirements
   for (long t_row = 0; t_row < ret.nrows; t_row++) {
     for (long test_idx = 0; test_idx < A.row_sizes[t_row]; test_idx++) {
-      const long a_col = SM_col(A, t_row, test_idx);
-      // we get a column index in a and iterate over the corresponding column in B
-      // then, we set all increment all appropriate sizes
-      // this will cause more values per row than we actually have
+      const long a_col = SM_col_or_panic(A, t_row, test_idx);
+      // we get a column index in a and iterate over the corresponding column in
+      // B then, we set all increment all appropriate sizes this will cause more
+      // values per row than we actually have
       for (long t_col_i = 0; t_col_i < B.row_sizes[a_col]; t_col_i++) {
-        const long t_col = SM_col(B, a_col, t_col_i);
+        const long t_col = SM_col_or_panic(B, a_col, t_col_i);
 
         ++ret.nvals;
         ++ret.col_sizes[t_col];
@@ -601,24 +598,52 @@ SMatF SM_prod_prepare(SMatF A, SMatF B) {
   }
 
   // Set row / colum starts with wrong row sizes so we can iterate more easily
-  SM_init_start_arrs(ret);
+  long max_row_size = ret.row_sizes[0];
+  for (long row = 1; row < ret.nrows; ++row) {
+    ret.row_starts[row] = ret.row_starts[row - 1] + ret.row_sizes[row - 1];
+    if (max_row_size < ret.row_sizes[row])
+      max_row_size = ret.row_sizes[row];
+  }
+
+#define RADIX
+#ifdef RADIX
+  long *tmp_arr = malloc(max_row_size * sizeof(long));
+#endif
+
   // remove duplicate columns that we got from position collection earlier
+  // sort row-subsets of col_pos
   for (long row = 0; row < ret.nrows; ++row) {
     if (ret.row_sizes[row] > 1) {
+#ifdef RADIX
+      radix_sort(&col_pos.vals[ret.row_starts[row]], ret.row_sizes[row],
+                 tmp_arr);
+#else
       qsort(&col_pos.vals[ret.row_starts[row]], ret.row_sizes[row],
-            sizeof(long), &long_lt);
+            sizeof(long), long_lt);
+#endif
+    }
+  }
 
+#ifdef RADIX
+  free(tmp_arr);
+#endif
+
+  // find repeated values in col_pos and remove them
+  for (long row = 0; row < ret.nrows; ++row) {
+    if (ret.row_sizes[row] > 1) {
       const long cur_row_size = ret.row_sizes[row];
+      long to_remove = 0;
       for (long i = ret.row_starts[row] + 1;
            i < ret.row_starts[row] + cur_row_size; ++i) {
         if (col_pos.vals[i] == col_pos.vals[i - 1]) {
-          --ret.row_sizes[row];
-          --ret.col_sizes[col_pos.vals[i]];
-          --ret.nvals;
-
+          ++to_remove;
           col_pos.vals[i - 1] = SM_NOT_PRESENT;
+          --ret.col_sizes[col_pos.vals[i]];
         }
       }
+
+      ret.row_sizes[row] -= to_remove;
+      ret.nvals -= to_remove;
     }
   }
 
@@ -648,33 +673,24 @@ void SM_prod(SMatF A, SMatF B, SMatF target) {
   assert(target.nrows == A.nrows && "target.nrows == A.nrows");
   assert(target.ncols == B.ncols && "target.ncols == B.ncols");
 
-  long maxsize = 0;
-  for (long i = 0; i < A.nrows; ++i) {
-    if (A.row_sizes[i] > maxsize)
-      maxsize = A.row_sizes[i];
-  }
-  float *tmp_buf = malloc(maxsize * sizeof(float));
+  memset(target.vals, (int)0x0, target.nvals * sizeof(float));
 
   for (long t_row = 0; t_row < target.nrows; t_row++) { // rows in target
-    memcpy(tmp_buf, &A.vals[A.row_starts[t_row]],
-           A.row_sizes[t_row] * sizeof(float));
-    for (long t_col_i = 0; t_col_i < target.row_sizes[t_row];
-         t_col_i++) { // values in row of target (present columns' indices)
-      const long t_col =
-          SM_col_or_panic(target, t_row, t_col_i); // column in target
-      SM_set_or_panic(target, t_row, t_col, 0.0f);
+    for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
+      // iterate over columns present in row of A
+      // idx is column in a / row in b
+      const long idx = SM_col_or_panic(A, t_row, a_col_i);
+      const long a_idx = A.row_starts[t_row] + a_col_i;
 
-      for (long a_col_i = 0; a_col_i < A.row_sizes[t_row]; a_col_i++) {
-        const long idx = SM_col_or_panic(A, t_row, a_col_i); // column in a
+      for (long t_col_i = 0; t_col_i < B.row_sizes[idx]; t_col_i++) {
+        const long t_col = SM_col_or_panic(B, idx, t_col_i); // column in target
+        const long b_idx = B.row_starts[idx] + t_col_i;
 
-        if (SM_has_loc(B, idx, t_col)) { // check if value is non-zero in b
-          *SM_ptr_or_panic(target, t_row, t_col) +=
-              tmp_buf[a_col_i] * SM_at(B, idx, t_col);
-        }
+        *SM_ptr_or_panic(target, t_row, t_col) +=
+            A.vals[a_idx] * B.vals[b_idx];
       }
     }
   }
-  free(tmp_buf);
 }
 
 void SM_prod_scl(SMatF A, SMatF B, float s, SMatF target) {
@@ -1114,12 +1130,14 @@ void SM_back_sub(SMatF tri_up, SMatF b, SMatF target) {
                   SM_at(b, b.nrows - 1, 0) /
                       SM_at(tri_up, tri_up.nrows - 1, tri_up.ncols - 1));
 
-  for (long row = b.nrows - 2; row >= 0; --row) {
-    if (SM_ROW_EMPTY(tri_up, row)) {
-      log_err("Division by zero because of zero-row in tri_up (%ld)", row);
+  for (long i = 0; i < tri_up.nrows; ++i) {
+    if (fabs(SM_at(tri_up, i, i)) < 0.0000001f) {
+      log_err("Zero element on main diagonal in backward substitution. "
+              "(Division by Zero)");
       exit(EXIT_FAILURE);
     }
-
+  }
+  for (long row = b.nrows - 2; row >= 0; --row) {
     SM_set_or_panic(target, row, 0, SM_at(b, row, 0));
 
     for (long col_i = tri_up.row_sizes[row] - 1; col_i >= 0; --col_i) {
@@ -1166,7 +1184,8 @@ void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target) {
 
     for (long col_i = 0; col_i < tri_lo.row_sizes[row]; ++col_i) {
       const long col = SM_col(tri_lo, row, col_i);
-      if (row == col) continue;
+      if (row == col)
+        continue;
 
       *SM_ptr_or_panic(target, row, 0) -=
           SM_at(target, col, 0) * SM_at(tri_lo, row, col);
@@ -1229,7 +1248,7 @@ SMatF SM_sor(SMatF A, SMatF b, float or, float rel_err, long n_iter) {
     SM_swap_vals(&t, &tmp);
 
     SM_prod(A, c, tmp);
-    SM_add_scl(r, tmp, 1.0f, -or, r1);
+    SM_add_scl(r, tmp, 1.0f, - or, r1);
 
     SM_swap_vals(&r, &r1);
   }
