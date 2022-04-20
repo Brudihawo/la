@@ -28,11 +28,18 @@ long binary_search(long *arr, long size, long val) {
     if (val == mid_val)
       return mid_idx;
 
-    if (val < mid_val) {
-      end = mid_idx - 1;
-    } else {
-      begin = mid_idx + 1;
-    }
+    const long ne = mid_idx - 1;
+    const long nb = mid_idx + 1;
+    const int cmp = val < mid_val;
+
+    // hopefully this is faster?
+    end = cmp * ne + (1 - cmp) * end;
+    begin = cmp * begin + (1 - cmp) * nb;
+    // if (val < mid_val) {
+    //   end = mid_idx - 1;
+    // } else {
+    //   begin = mid_idx + 1;
+    // }
   }
 
   return -1;
