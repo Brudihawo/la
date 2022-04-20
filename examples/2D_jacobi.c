@@ -4,7 +4,7 @@
 #include "sparse.h"
 #include "stdlib.h"
 
-#define FIELD_SIZE 400
+#define FIELD_SIZE 200
 #define V_X 0.0f
 #define V_Y -1.0f
 #define ALPHA 4.0f
