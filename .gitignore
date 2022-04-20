@@ -11,8 +11,10 @@ test/*
 examples/*
 !examples/*.[ch]
 
+# Output from Profiling and Benchmarks
 coverage/*
 callgrind*
 cachegrind*
+*.dat
 
 docs/*
