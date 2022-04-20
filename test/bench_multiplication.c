@@ -1,3 +1,5 @@
+#include "assert.h"
+#include "limits.h"
 #include "matf.h"
 #include "math.h"
 #include "sparse.h"
@@ -5,30 +7,75 @@
 #include "stdlib.h"
 #include "time.h"
 
+void print_arr(const long *arr, long sz) {
+  for (long i = 0; i < sz; ++i) {
+    if (i % 10 == 0)
+      printf("\n");
+
+    printf("%3ld ", arr[i]);
+  }
+  printf("\n");
+}
+
 void gen_randoms(long *rows, long *cols, float *vals, long n_vals, long n_rows,
                  long n_cols) {
   long *idcs = malloc(n_vals * sizeof(long));
 
   for (long i = 0; i < n_vals; ++i) {
+    vals[i] = rand_float();
+    idcs[i] = rand() % (n_rows * n_cols);
+  }
+  radix_sort(idcs, n_vals, NULL);
+
+  long invalid_indices = 0;
+  for (long i = 1; i < n_vals; ++i) {
+    if (idcs[i] == idcs[i - 1]) {
+      idcs[i - 1] = LONG_MAX;
+      ++invalid_indices;
+    }
+  }
+
+  qsort(idcs, n_vals, sizeof(long), long_gt);
+
+  long *tmp_arr = malloc(invalid_indices * sizeof(long));
+
+  for (long i = n_vals - invalid_indices; i < n_vals; ++i) {
+    const long cur_corr_idx = i + invalid_indices - n_vals;
+
+    if (cur_corr_idx > 0)
+      radix_sort(&idcs[n_vals - invalid_indices], cur_corr_idx, tmp_arr);
+
     bool repeat = true;
     while (repeat) {
       vals[i] = rand_float();
       idcs[i] = rand() % (n_rows * n_cols);
 
       repeat = false;
-      for (long j = 0; j < i; j++) {
-        if (idcs[j] == idcs[i]) {
-          repeat = true;
-        }
+
+      long pos =
+          binary_search(&idcs[n_vals - invalid_indices - 1], cur_corr_idx, idcs[i]);
+      if (pos > 0) {
+        repeat = true;
+      }
+
+      if (binary_search(idcs, n_vals - invalid_indices, idcs[i]) > 0) {
+        repeat = true;
       }
     }
   }
-  qsort(idcs, n_vals, sizeof(long), long_gt);
+  free(tmp_arr);
+
+  radix_sort(idcs, n_vals, NULL);
+
+  for (long i = 1; i < n_vals; ++i) {
+    assert(idcs[i] != idcs[i - 1]);
+  }
 
   for (long i = 0; i < n_vals; ++i) {
     cols[i] = idcs[i] % n_cols;
     rows[i] = idcs[i] / n_cols;
   }
+
   free(idcs);
 }
 
@@ -65,7 +112,6 @@ void matrix_product_time(long size, long nvals) {
   clock_t m_end = clock();
   double m_time = (double)(m_end - m_start) / CLOCKS_PER_SEC;
 
-
   clock_t s_start = clock();
 
   SMatF s_T = SM_prod_prepare(s_A, s_B);
@@ -77,15 +123,20 @@ void matrix_product_time(long size, long nvals) {
   bool wrong = false;
   for (long row = 0; row < m_T.rows && !wrong; ++row) {
     for (long col = 0; col < m_T.cols && !wrong; ++col) {
-      if (MF_AT(m_T, row, col) != SM_at(s_T, row, col)) {
+      if (fabs(MF_AT(m_T, row, col) - SM_at(s_T, row, col)) > 0.1) {
         printf("Incorrect product\n");
         wrong = true;
         break;
       }
     }
   }
+  if (wrong) {
+    MF_print(m_T);
+    SM_print(s_T);
+  }
 
-  fprintf(stderr, "%5ld %13.8f %13.8f %13.8f\n", size, m_time, s_time, s_time / m_time);
+  fprintf(stderr, "%5ld %13.8f %13.8f %13.8f\n", size, m_time, s_time,
+          s_time / m_time);
 
   SM_free(s_A);
   SM_free(s_B);
