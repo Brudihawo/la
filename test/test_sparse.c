@@ -726,22 +726,22 @@ bool test_subset_triup(void) {
 int main(void) {
   srand(69);
   test_func funcs[] = {
-    test_init_from_pos_with,
-    test_structure_equality_self,
-    test_equality_self,
-    test_random_pos_prod,
-    test_random_pos_dif_sizes_prod_ver_matf,
-    test_tridiag_vec_prod,
-    test_add_sub_random,
-    test_transpose,
-    test_scalar_prod_self,
-    test_energy_norm_identity,
-    test_is_triup,
-    test_back_sub,
-    test_forw_sub,
-    test_subset_diag,
-    test_subset_trilo,
-    test_subset_triup,
+      test_init_from_pos_with,
+      test_structure_equality_self,
+      test_equality_self,
+      test_random_pos_prod,
+      test_random_pos_dif_sizes_prod_ver_matf,
+      test_tridiag_vec_prod,
+      test_add_sub_random,
+      test_transpose,
+      test_scalar_prod_self,
+      test_energy_norm_identity,
+      test_is_triup,
+      test_back_sub,
+      test_forw_sub,
+      test_subset_diag,
+      test_subset_trilo,
+      test_subset_triup,
   };
 
   run_tests(funcs);
