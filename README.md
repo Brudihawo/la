@@ -30,6 +30,7 @@ $ make DEBUG=true SANITIZE=true
 - [ ] valgrind for profiling
 - [x] SMatF check for nvals < rows * cols
 - [x] Build System improvement with debug and release targets
+- [ ] Optimize forward and backward substituion for SMatF
 
 ## In-File-TODOs:
 
