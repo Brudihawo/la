@@ -1261,6 +1261,73 @@ SMatF SM_sor(SMatF A, SMatF b, float or, float rel_err, long n_iter) {
   return t;
 }
 
+SMatF SM_incom_lr(SMatF A, SMatF b, float rel_err, long n_iter) {
+  if (A.nrows != A.ncols) {
+    log_err("Can only perform the jacobi-method for matrix inversion on "
+            "invertible matrices. Here, A.nrows != A.ncols (%ld != %ld).",
+            A.nrows, A.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  if (b.nrows != A.nrows || b.ncols != 1) {
+    log_err("Size mismatch. Expected b to be of size (%ld, %ld), but got (%ld, "
+            "%ld)",
+            A.nrows, 1, b.nrows, b.ncols);
+    exit(EXIT_FAILURE);
+  }
+
+  // TODO: This is wrong
+  SMatF L = SM_subset_trilo(A, true);
+  SMatF R = SM_subset_triup(A, true);
+
+  SMatF c = SM_empty_like(b);
+  SMatF r = SM_empty_like(b);
+  SMatF r1 = SM_empty_like(b);
+  SMatF t = SM_empty_like(b);
+  SMatF tmp = SM_empty_like(b);
+
+  // randomly initialise target
+  for (long i = 0; i < t.nvals; ++i) {
+    t.vals[i] = rand_float();
+  }
+
+  float max_err = rel_err * SM_abs(b);
+  float err_abs = FLT_MAX;
+
+  SM_prod(A, t, r);
+  SM_sub(b, r, tmp);
+  SM_swap_vals(&r, &tmp);
+
+  for (long i = 0; i < n_iter; ++i) {
+    err_abs = SM_abs(r);
+    if (err_abs < max_err) {
+      break;
+    }
+
+    if (i % 10 == 0)
+      log_msg("Iteration %ld: %f > %f", i, err_abs, max_err);
+
+    SM_forw_sub(L, r, tmp);
+    SM_back_sub(R, tmp, c);
+
+    SM_add(t, c, tmp);
+    SM_swap_vals(&t, &tmp);
+
+    SM_prod(A, c, tmp);
+    SM_sub(r, tmp, r1);
+
+    SM_swap_vals(&r, &r1);
+  }
+
+  SM_free(L);
+  SM_free(R);
+  SM_free(c);
+  SM_free(r);
+  SM_free(r1);
+  SM_free(tmp);
+  return t;
+}
+
 void SM_vec_iteration(SMatF A, SMatF target, float rel_tol) {
   assert(A.nrows == A.ncols);
 

@@ -396,6 +396,16 @@ void SM_forw_sub(SMatF tri_lo, SMatF b, SMatF target);
  */
 SMatF SM_sor(SMatF A, SMatF b, float or, float rel_err, long n_iter);
 
+/* @brief compute solution to A target = b using iterative methods with incomplete LR
+ *        decomposition of A as a preconditioner
+ *
+ * @param A coefficient matrix for system of equations
+ * @param b solution vector
+ * @param rel_err error tolerance
+ * @param n_iter maximum number of iterations
+ */
+SMatF SM_incom_lr(SMatF A, SMatF b, float rel_err, long n_iter);
+
 /* @brief Compute largest Eigenvector of A using vector iteration
  *
  * @param A matrix for EV computation
